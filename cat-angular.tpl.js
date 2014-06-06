@@ -22,6 +22,59 @@ try {
   module = angular.module('cat', []);
 }
 module.run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/base-detail.tpl.html',
+    '<div class="panel panel-default">\n' +
+    '    <div class="panel-heading">\n' +
+    '        <div class="pull-right edit-buttons" ng-if="!editDetail && !!editTemplate">\n' +
+    '            <div class="btn-group">\n' +
+    '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"><span\n' +
+    '                        class="glyphicon glyphicon-trash"></span> Delete\n' +
+    '                </button>\n' +
+    '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
+    '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span> Edit\n' +
+    '                </button>\n' +
+    '            </div>\n' +
+    '            &nbsp;\n' +
+    '            <a ng-href="#{{baseUrl}}/new" class="btn btn-xs btn-default" cat-activate-on-shortcut="alt+n"><span\n' +
+    '                    class="glyphicon glyphicon-plus"></span> New</a>\n' +
+    '        </div>\n' +
+    '        <h5 ng-if="exists">{{title}}</h5>\n' +
+    '        <h5 ng-if="!exists">New</h5>\n' +
+    '    </div>\n' +
+    '    <!-- create form element if editing -->\n' +
+    '    <div class="panel-body">\n' +
+    '        <form name="form" cat-warn-on-nav-if-dirty novalidate class="form-horizontal"\n' +
+    '              ng-if="!!editDetail && !!editTemplate">\n' +
+    '            <div ng-include="editTemplate"></div>\n' +
+    '        </form>\n' +
+    '\n' +
+    '        <div ng-include="mainViewTemplate" ng-if="!editDetail"></div>\n' +
+    '    </div>\n' +
+    '    <div class="panel-footer text-right" ng-if="!!editDetail">\n' +
+    '        <button type="button" class="btn btn-xs btn-default" ng-click="cancelEdit()"\n' +
+    '                cat-activate-on-shortcut="alt+esc"><span class="glyphicon glyphicon-remove"></span> Cancel\n' +
+    '        </button>\n' +
+    '        <button type="submit" class="btn btn-xs btn-primary" ng-click="save()"\n' +
+    '                ng-disabled="form.$pristine"><span class="glyphicon glyphicon-floppy-disk"></span>\n' +
+    '            Save\n' +
+    '        </button>\n' +
+    '    </div>\n' +
+    '</div>\n' +
+    '<div ng-if="!!additionalViewTemplate" ng-include="additionalViewTemplate"></div>');
+}]);
+})();
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+(function(module) {
+try {
+  module = angular.module('cat');
+} catch (e) {
+  module = angular.module('cat', []);
+}
+module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-facets.tpl.html',
     '<div class="sidebar">\n' +
     '    <ul class="nav sidenav">\n' +
