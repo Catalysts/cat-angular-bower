@@ -1,3 +1,18 @@
+/*
+ * Copyright 2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 (function(window, document, undefined) {
 'use strict';
 window.cat = {};
@@ -367,28 +382,6 @@ window.BaseDetailController = function ($scope, $routeParams, $breadcrumbs, $loc
 };
 
 window.BaseDetailController.$inject = ['$scope', '$routeParams', '$breadcrumbs', '$location', '$window', 'endpoint', 'templateUrls', 'baseUrl', 'Model', '$globalMessages'];
-
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-
-angular.module('cat').
-    filter('replaceText', function () {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
 
 })(window, document);
 
@@ -809,6 +802,28 @@ angular.module('cat')
             }
         };
     });
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+angular.module('cat').
+    filter('replaceText', function () {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 })(window, document);
 
 (function(window, document, undefined) {
