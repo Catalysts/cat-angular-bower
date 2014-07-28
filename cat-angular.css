@@ -25,3 +25,48 @@
   -moz-padding-start: 0;
   list-style-type: none;
 }
+.spinner-background {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin-top: -30px;
+  margin-left: -30px;
+  background: black;
+  border: 2px solid white;
+  height: 60px;
+  width: 60px;
+  z-index: 4000;
+  border-radius: 5px;
+}
+.spinner-backdrop {
+  z-index: 3000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background-color: #000;
+  opacity: 0.5;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+}
+.spinner-backdrop.fade-in.ng-hide-add,
+.spinner-backdrop.fade-in.ng-hide-remove {
+  transition: 0.2s ease all;
+  display: block !important;
+}
+.spinner-backdrop.fade-in.ng-hide-add {
+  opacity: 0.5;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+}
+.spinner-backdrop.fade-in.ng-hide-add.ng-hide-add-active {
+  opacity: 0;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+}
+.spinner-backdrop.fade-in.ng-hide-remove.ng-hide-remove-active {
+  opacity: 0.5;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+}
+.spinner {
+  /* important is needed to override element style attribute set by spin.js */
+  position: fixed !important;
+}

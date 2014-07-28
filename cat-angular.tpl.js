@@ -23,6 +23,10 @@ try {
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/base-detail.tpl.html',
+    '<div ng-repeat="parent in uiStack" class="alert alert-info"><a ng-href="{{parent.url}}">\n' +
+    '     {{parent.title}}\n' +
+    '</a> </div>\n' +
+    '\n' +
     '<div class="panel panel-default">\n' +
     '    <div class="panel-heading">\n' +
     '        <div class="pull-right edit-buttons" ng-if="!editDetail && !!editTemplate">\n' +
@@ -38,12 +42,12 @@ module.run(['$templateCache', function($templateCache) {
     '            <a ng-href="#{{baseUrl}}/new" class="btn btn-xs btn-default" cat-activate-on-shortcut="alt+n"><span\n' +
     '                    class="glyphicon glyphicon-plus"></span> New</a>\n' +
     '        </div>\n' +
-    '        <h5 ng-if="exists">{{title}}</h5>\n' +
+    '        <h5 ng-if="exists">{{title()}}</h5>\n' +
     '        <h5 ng-if="!exists">New</h5>\n' +
     '    </div>\n' +
     '    <!-- create form element if editing -->\n' +
     '    <div class="panel-body">\n' +
-    '        <form name="form" cat-warn-on-nav-if-dirty novalidate class="form-horizontal"\n' +
+    '        <form name="form" novalidate class="form-horizontal"\n' +
     '              ng-if="!!editDetail && !!editTemplate">\n' +
     '            <div ng-include="editTemplate"></div>\n' +
     '        </form>\n' +
@@ -60,7 +64,7 @@ module.run(['$templateCache', function($templateCache) {
     '        </button>\n' +
     '    </div>\n' +
     '</div>\n' +
-    '<div ng-if="!!additionalViewTemplate" ng-include="additionalViewTemplate"></div>');
+    '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"></div>');
 }]);
 })();
 
@@ -79,19 +83,21 @@ module.run(['$templateCache', function($templateCache) {
     '<div class="sidebar">\n' +
     '    <ul class="nav sidenav">\n' +
     '        <li ng-repeat="facet in facets">\n' +
-    '            <h4>{{facetName(facet)}}</h4>\n' +
+    '            <h4>{{facetName(facet)}}\n' +
+    '                <small ng-if="!isActive(facet)">\n' +
+    '                    <a ng-click="showAll(facet)" href="">See all</a>\n' +
+    '                </small>\n' +
+    '            </h4>\n' +
     '            <ul class="nav">\n' +
-    '                <li ng-repeat="term in facet.terms" ng-class="{\'active\': isActive(facet,term)}">\n' +
-    '                    <span>\n' +
-    '                        <a ng-if="!isActive(facet,term)" href="" ng-click="setActive(facet, term)">{{term.name}}</a>\n' +
-    '                        <span ng-if="isActive(facet,term)">{{term.name}} <a href="" ng-click="remove(facet)"><span\n' +
-    '                                class="glyphicon glyphicon-remove"></span></a></span>\n' +
+    '                <li ng-repeat="term in facet.terms" ng-class="{\'active\': isActive(facet,term)}" cat-load-more="5">\n' +
+    '                    <a ng-if="showItem(facet,term)" href="" ng-click="setActive(facet,term)">{{term.name}}\n' +
     '                        <span class="text-muted">({{term.count}})</span>\n' +
-    '                    </span>\n' +
+    '                    </a>\n' +
     '                </li>\n' +
     '            </ul>\n' +
     '        </li>\n' +
     '    </ul>\n' +
+    '\n' +
     '</div>');
 }]);
 })();
@@ -163,25 +169,25 @@ module.run(['$templateCache', function($templateCache) {
     '<div ng-cloak>\n' +
     '    <div ng-if="searchProps" class="row search">\n' +
     '        <div class="col-sm-3 pull-right" ng-repeat="prop in searchProps">\n' +
-    '            <input class="form-control" placeholder="Search by {{prop}}" ng-model="search[prop]"\n' +
-    '                   cat-focus-on-shortcut="alt+f">\n' +
+    '            <input class="form-control" placeholder="Search by {{prop}}" ng-model="listData.search[prop]">\n' +
     '        </div>\n' +
     '    </div>\n' +
-    '    <div class="row text-center" ng-if="!isSinglePageList && count !== 0">\n' +
-    '        <pagination total-items="count" items-per-page="pagination.size" page="pagination.page" max-size="10"\n' +
+    '    <div class="row text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
+    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '                    page="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
     '    </div>\n' +
     '    <div class="row text-center">\n' +
-    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="count !== 0">\n' +
-    '            {{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}\n' +
+    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0">\n' +
+    '            {{listData.count}} Einträge gefunden. Einträge {{listData.firstResult}}-{{listData.lastResult}}\n' +
     '        </div>\n' +
-    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="count === 0">\n' +
-    '            Keine Einträge gefunden\n' +
+    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count === 0">\n' +
+    '        Keine Einträge gefunden\n' +
     '        </div>\n' +
     '    </div>\n' +
-    '    <div class="row" ng-transclude ng-show="count !== 0"></div>\n' +
-    '    <div class="row text-center" ng-if="!isSinglePageList && count !== 0">\n' +
-    '        <pagination total-items="count" items-per-page="pagination.size" page="pagination.page" max-size="10"\n' +
+    '    <div class="row" ng-transclude ng-show="listData.count !== 0"></div>\n' +
+    '    <div class="row text-center" ng-if="!listData.isSinglePageList && istData.count !== 0">\n' +
+    '    <pagination total-items="listData.count" items-per-page="listData.pagination.size" page="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
     '    </div>\n' +
     '</div>\n' +

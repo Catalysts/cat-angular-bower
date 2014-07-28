@@ -109,6 +109,12 @@ function ApiEndpoint(url, endpointName, settings, $http) {
         });
     };
 
+    this.info = function (id) {
+        return $http.get(_endpointUrl + '/' + id + '?info').then(function (response) {
+            return response.data;
+        });
+    };
+
     this.save = function (object, pathParams) {
         if (!!object.id) {
             return $http.put(_endpointUrl + '/' + object.id, removeEndpoints(object)).then(function (response) {
@@ -159,6 +165,7 @@ window.cat = window.cat || {};
 window.cat.FacetTerm = function (data) {
     if (data === undefined) data = {};
 
+    this.id = data.id;
     this.name = data.name;
     this.count = data.count;
 };
@@ -188,6 +195,8 @@ window.cat.SearchRequest = function (searchUrlParams) {
     var _sort = {};
     var _search = {};
 
+    var lastEncoded;
+
     if (!!searchUrlParams && !_.isEmpty(searchUrlParams)) {
         _pagination.page = searchUrlParams.page || _pagination.page;
         _pagination.size = searchUrlParams.size || _pagination.size;
@@ -201,7 +210,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
     }
 
     var _encodeSort = function () {
-        return (!!_sort.property ? 'sort=' + _sort.property + ':' + (_sort.isDesc ? 'desc' : 'asc') : '');
+        return (!!_sort.property ? 'sort=' + _sort.property + ':' + ((_sort.isDesc === true || _sort.isDesc === 'true') ? 'desc' : 'asc') : '');
     };
 
     var _encodePagination = function () {
@@ -239,6 +248,10 @@ window.cat.SearchRequest = function (searchUrlParams) {
         return '';
     };
 
+    var urlEndoded = function () {
+        return _([_encodePagination(), _encodeSort(), _encodeSearch()]).reduce(_concatenate);
+    };
+
     this.pagination = function (pagination) {
         if (pagination === undefined) {
             return _pagination;
@@ -267,7 +280,12 @@ window.cat.SearchRequest = function (searchUrlParams) {
     };
 
     this.urlEncoded = function () {
-        return _([_encodePagination(), _encodeSort(), _encodeSearch()]).reduce(_concatenate);
+        lastEncoded = urlEndoded();
+        return lastEncoded;
+    };
+
+    this.isDirty = function () {
+        return lastEncoded !== urlEndoded();
     };
 
     this.setSearch = function ($location) {
@@ -289,30 +307,60 @@ window.cat.SearchRequest = function (searchUrlParams) {
 (function(window, document, undefined) {
 'use strict';
 
-window.BaseDetailController = function ($scope, $routeParams, $breadcrumbs, $location, $window, endpoint, tempalteUrls, baseUrl, Model, $globalMessages) {
+window.BaseDetailController = function ($injector, $scope, endpoint, templateUrls, baseUrl, Model) {
+    $injector.invoke(window.BaseDetailController2, this, {
+        $scope: $scope,
+        config: {
+            endpoint: endpoint,
+            Model: Model,
+            templateUrls: templateUrls,
+            baseUrl: baseUrl
+        }
+    });
+};
+window.BaseDetailController.$inject = ['$injector', '$scope', 'endpoint', 'templateUrls', 'baseUrl', 'Model'];
 
-    $scope.detail = undefined;
+window.BaseDetailController2 = function ($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, config) {
+
     $scope.editDetail = undefined;
     $scope.$fieldErrors = {};
 
-    $scope.editTemplate = tempalteUrls.edit;
+    var endpoint = config.endpoint;
+    var baseUrl = config.baseUrl;
+    var templateUrls = config.templateUrls;
+    var Model = config.Model;
 
-    if (_.isObject(tempalteUrls.view)) {
-        $scope.mainViewTemplate = tempalteUrls.view.main;
-        $scope.additionalViewTemplate = tempalteUrls.view.additional;
+    $scope.uiStack = config.uiStack;
+
+    $scope.editTemplate = templateUrls.edit;
+
+    if (_.isObject(templateUrls.view)) {
+        $scope.mainViewTemplate = templateUrls.view.main;
+        $scope.additionalViewTemplate = templateUrls.view.additional;
     } else {
-        $scope.mainViewTemplate = tempalteUrls.view;
+        $scope.mainViewTemplate = templateUrls.view;
     }
 
     $scope.baseUrl = baseUrl;
 
+    $scope.title = function () {
+        var data = $scope.detail;
+        if (_.isUndefined(data)) {
+            return '';
+        }
+        return !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
+    };
+
+    var update = function () {
+        $breadcrumbs.replaceLast({
+            title: $scope.title()
+        });
+    };
+
     var reload = function () {
         endpoint.get($routeParams.id).then(function (data) {
-            $scope.title = !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
             $scope.detail = data;
-            $breadcrumbs.replaceLast({
-                title: $scope.title
-            });
+            update();
         });
     };
 
@@ -354,8 +402,8 @@ window.BaseDetailController = function ($scope, $routeParams, $breadcrumbs, $loc
                 $location.path(baseUrl + '/' + data.id);
             } else {
                 $scope.editDetail = undefined;
-                $scope.title = !!data.breadcrumbTitle ? data.breadcrumbTitle() : data.name;
                 $scope.detail = data;
+                update();
             }
         }, function (response) {
             if (!response.data.fieldErrors) {
@@ -375,13 +423,21 @@ window.BaseDetailController = function ($scope, $routeParams, $breadcrumbs, $loc
     };
 
     if ($scope.exists) {
-        reload();
+        if (_.isUndefined($scope.detail)) {
+            reload();
+        } else {
+            update();
+        }
     } else {
-        $scope.add();
+        if (_.isUndefined($scope.detail)) {
+            $scope.add();
+        } else {
+            $scope.edit();
+        }
     }
 };
 
-window.BaseDetailController.$inject = ['$scope', '$routeParams', '$breadcrumbs', '$location', '$window', 'endpoint', 'templateUrls', 'baseUrl', 'Model', '$globalMessages'];
+window.BaseDetailController2.$inject = ['$scope', '$routeParams', '$breadcrumbs', '$location', '$window', '$globalMessages', 'config'];
 
 })(window, document);
 
@@ -406,6 +462,50 @@ angular.module('cat')
 'use strict';
 
 angular.module('cat')
+    .directive('catCheckbox', function () {
+        return {
+            replace: true,
+            restrict: 'E',
+            scope: {
+                checked: '='
+            },
+            link: function (scope, element, attrs) {
+                if (!!scope.checked) {
+                    element.addClass('glyphicon glyphicon-check');
+                }
+                else {
+                    element.addClass('glyphicon glyphicon-unchecked');
+                }
+            }
+        };
+    });
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+angular.module('cat')
+    .directive('catConfirmClick', function () {
+        return {
+            restrict: 'A',
+            link: function (scope, element, attr) {
+                var msg = attr.catConfirmClick || 'Are you sure?';
+                var clickAction = attr.catOnConfirm;
+                element.bind('click', function (event) {
+                    if (window.confirm(msg)) {
+                        scope.$eval(clickAction);
+                    }
+                });
+            }
+        };
+    });
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+angular.module('cat')
     .directive('catFacets', function () {
         return {
             replace: true,
@@ -419,13 +519,21 @@ angular.module('cat')
                 if (scope.facets === undefined) throw 'Attribute facets must be set!';
             },
             controller: function ($scope, $location, $rootScope) {
+
                 $scope.isActive = function (facet, term) {
                     var search = $location.search();
                     var name = 'search.' + facet.name;
                     if (!!search[name]) {
-                        return search[name] === term.name;
+                        return !!term && search[name] === term.id;
+                    } else {
+                        return true;
                     }
+                };
 
+                $scope.showAll = function (facet) {
+                    var search = new window.cat.SearchRequest($location.search()).search();
+                    delete search[facet.name];
+                    $rootScope.$broadcast('SearchChanged', search);
                 };
 
                 $scope.facetName = function (facet) {
@@ -437,15 +545,21 @@ angular.module('cat')
                 };
 
                 $scope.setActive = function (facet, term) {
+                    facet.activeTerm = term;
                     var search = new window.cat.SearchRequest($location.search()).search();
-                    search[facet.name] = term.name;
+                    search[facet.name] = term.id;
                     $rootScope.$broadcast('SearchChanged', search);
+
                 };
 
                 $scope.remove = function (facet) {
                     var search = new window.cat.SearchRequest($location.search()).search();
                     delete search[facet.name];
                     $rootScope.$broadcast('SearchChanged', search);
+                };
+
+                $scope.showItem = function (facet, term) {
+                    return $scope.isActive(facet) || $scope.isActive(facet, term);
                 };
             }
         };
@@ -518,6 +632,46 @@ angular.module('cat')
 'use strict';
 
 angular.module('cat')
+    .directive('catLoadMore', function () {
+        return {
+            replace: true,
+            restrict: 'A',
+            link: function (scope, element, attrs) {
+                var initialCount = parseInt(attrs.catLoadMore);
+                scope.$parent.elementsCount = scope.$parent.elementsCount || initialCount;
+                scope.$parent.elements = scope.$parent.elements || [];
+                scope.$parent.elements.push(element);
+                if (scope.$parent.elements.length > scope.$parent.elementsCount) {
+                    element.addClass('hidden');
+                }
+                if (!element.parent().next().length && scope.$parent.elements.length > scope.$parent.elementsCount) {
+                    var elt = $('<a href="#">Show more</a>');
+                    elt.on({
+                        click: function () {
+                            scope.$parent.elementsCount += initialCount;
+                            if (scope.$parent.elements.length <= scope.$parent.elementsCount) {
+                                elt.addClass('hidden');
+                            }
+                            scope.$parent.elements.forEach(function (elt, ind) {
+                                if (ind < scope.$parent.elementsCount) {
+                                    elt.removeClass('hidden');
+                                }
+                            });
+                            return false;
+                        }
+                    });
+                    element.parent().after(elt);
+                }
+            }
+        };
+    });
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+angular.module('cat')
     .directive('catMainMenu', ['$mainMenu', '$rootScope', function ($mainMenu, $rootScope) {
         return {
             restrict: 'E',
@@ -572,87 +726,78 @@ angular.module('cat')
             restrict: 'E',
             transclude: true,
             scope: {
-                api: '=',
-                collection: '=',
-                facets: '=',
-                searchRequest: '=',
-                defaultSort: '='
+                listData: '=?'
             },
             templateUrl: 'template/cat-paginated.tpl.html',
             link: function (scope, element, attrs) {
-                if (scope.api === undefined) throw 'Attribute "api" must be set.';
-                if (scope.collection === undefined) throw 'Attribute "collection" must be set and reference a scope property.';
-
                 if (!!attrs.searchProps) {
                     scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
                         return !!prop;
                     });
                 }
             },
-            controller: function ($scope, $location) {
+            controller: function ($scope, $location, catListDataLoadingService, $timeout, $rootScope) {
+                var searchTimeout = null, DELAY_ON_SEARCH = 500;
 
-                var searchRequest = null;
-
-                if ($scope.searchRequest === undefined) {
-                    searchRequest = new window.cat.SearchRequest($location.search());
-                } else {
-                    searchRequest = $scope.searchRequest;
+                if (_.isUndefined($scope.listData)) {
+                    $scope.listData = $scope.$parent.listData;
+                    if (_.isUndefined($scope.listData)) {
+                        throw new Error('listData was not defined and couldn\'t be found with default value');
+                    }
                 }
 
-                var reload = function () {
-                    $scope.api.list(searchRequest).then(function (data) {
-                        $scope.count = data.totalCount;
-                        $scope.collection = data.elements;
-                        $scope.firstResult = ($scope.pagination.page - 1) * $scope.pagination.size + 1;
-                        $scope.lastResult = Math.min(
-                                $scope.pagination.page * $scope.pagination.size,
-                            $scope.count);
+                $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
 
-                        if ($scope.facets !== undefined) {
-                            $scope.facets = data.facets;
+                var searchRequest = $scope.listData.searchRequest;
+
+                var reload = function (delay) {
+                    $timeout.cancel(searchTimeout);
+                    searchTimeout = $timeout(function () {
+                        if (searchRequest.isDirty()) {
+                            catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
+                                function (data) {
+                                    _.assign($scope.listData, data);
+                                }
+                            );
                         }
-                        $scope.isSinglePageList = data.totalCount <= $scope.pagination.size;
-                    });
+                    }, delay || 0);
                 };
 
-                $scope.search = searchRequest.search();
-                if ($scope.defaultSort) {
-                    $scope.sort = angular.copy($scope.defaultSort);
-                } else {
-                    $scope.sort = {property: 'name', isDesc: false};
-                }
-                $scope.pagination = searchRequest.pagination();
-                $scope.count = 0;
-
-                $scope.$watch('sort', function (newVal, oldVal) {
+                $scope.$watch('listData.sort', function (newVal, oldVal) {
                     if (!!newVal) {
                         console.log('broadcasting sort changed: ' + angular.toJson(newVal));
                         $scope.$parent.$broadcast('SortChanged', newVal);
                     }
                 }, true);
 
-                $scope.$on('SearchChanged', function (event, value) {
-                    updateSearch(value);
+                $scope.$on('SearchChanged', function (event, value, delay) {
+                    searchChanged(value, delay);
                 });
 
-                $scope.$watch('pagination', function () {
+                $scope.$watch('listData.pagination', function () {
                     searchRequest.setSearch($location);
                     reload();
                 }, true);
 
-                var updateSearch = function (value) {
-                    $scope.search = searchRequest.search(value);
+                var searchChanged = function (value, delay) {
+                    searchRequest.search(value);
                     searchRequest.setSearch($location);
-                    $scope.pagination.page = 1;
-                    reload();
+                    $scope.listData.pagination.page = 1;
+                    reload(delay);
                 };
 
-                $scope.$watch('search', updateSearch, true);
+                var updateSearch = function (value) {
+                    var search = searchRequest.search();
+                    _.assign(search, value);
+                    $rootScope.$broadcast('SearchChanged', search, DELAY_ON_SEARCH);
+                };
+
+                $scope.$watch('listData.search', updateSearch, true);
 
                 $scope.$on('SortChanged', function (event, value) {
-                    $scope.sort = searchRequest.sort(value);
+                    searchRequest.sort(value);
                     searchRequest.setSearch($location);
-                    $scope.pagination.page = 1;
+                    $scope.listData.pagination.page = 1;
                     reload();
                 });
             }
@@ -667,14 +812,13 @@ angular.module('cat')
 
 angular.module('cat')
     .directive('catSelect', function ($log, $api) {
-        var fetchElements = function (endpoint) {
+        var fetchElements = function (endpoint, sort) {
             return function (queryParams) {
                 var searchRequest = new window.cat.SearchRequest(queryParams.data);
-                searchRequest.sort({ property: 'name', isDesc: false });
+                searchRequest.sort(sort || { property: 'name', isDesc: false });
                 return endpoint.list(searchRequest).then(queryParams.success);
             };
         };
-
 
         return {
             restrict: 'EA',
@@ -688,13 +832,34 @@ angular.module('cat')
                 element.addClass('form-control');
             },
             controller: function ($scope) {
-                var api = $api[$scope.options.endpoint];
-                if (!api) {
-                    $log.error('No api endpoint "' + $scope.options.endpoint + '" defined');
-                    $scope.elements = [];
-                    return;
+                var transport,
+                    quietMillis,
+                    searchRequestFunc = $scope.options.search || function (term, page) {
+                        return { 'search.name': term };
+                    },
+                    filterFunc = $scope.options.filter || function (term) {
+                        return true;
+                    };
+                if (Object.prototype.toString.call($scope.options.endpoint) === '[object Array]') {
+                    transport = function (queryParams) {
+                        return queryParams.success({
+                            elements: $scope.options.endpoint
+                        });
+                    };
+                    quietMillis = 0;
+                } else {
+                    var api = $api[$scope.options.endpoint];
+                    if (!api) {
+                        $log.error('No api endpoint "' + $scope.options.endpoint + '" defined');
+                        $scope.elements = [];
+                        return;
+                    }
+                    transport = fetchElements(api, $scope.options.sort);
+                    quietMillis = 500;
                 }
+
                 $scope.selectOptions = _.assign({
+                    placeholder: ' ', // space in default placeholder is required, otherwise allowClear property does not work
                     minimumInputLength: 0,
                     adaptDropdownCssClass: function (cssClass) {
                         if (_.contains(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
@@ -703,13 +868,11 @@ angular.module('cat')
                         return null;
                     },
                     ajax: {
-                        data: function (term, page) {
-                            return { 'search.name': term };
-                        },
-                        quietMillis: 500,
-                        transport: fetchElements(api),
+                        data: searchRequestFunc,
+                        quietMillis: quietMillis,
+                        transport: transport,
                         results: function (data, page) {
-                            return {results: data.elements};
+                            return {results: _.filter(data.elements, filterFunc)};
                         }
                     },
                     formatResult: function (element) {
@@ -737,7 +900,8 @@ angular.module('cat')
                 var title = element.text();
                 var property = attrs.catSortable || title.toLowerCase().trim();
 
-                scope.sort = { property: undefined, isDesc: false};
+                // todo - make configurable
+                scope.sort = scope.listData.searchRequest.sort();
 
                 var icon = 'glyphicon-sort-by-attributes';
 
@@ -769,6 +933,57 @@ angular.module('cat')
             }
         };
     });
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+angular.module('cat')
+    .directive('form', ['$timeout', function ($timeout) {
+        return {
+            restrict: 'E',
+            scope: true,
+            require: 'form',
+            link: function (scope, element, attrs, formCtrl) {
+                var warningMessage = attrs.eocsWarnOnNavIfDirty || 'You have unsaved changes. Leave the page?';
+
+                // TODO - remove this ugly hack if ui-select2 fixes this problem...
+                $timeout(function () {
+                    formCtrl.$setPristine(true);
+                }, 50);
+
+                scope.$on('formReset', function () {
+                    formCtrl.$setPristine(true);
+                });
+
+                scope.$on('formDirty', function () {
+                    formCtrl.$setDirty(true);
+                });
+
+                // handle angular route change
+                scope.$on('$locationChangeStart', function (event) {
+                    if (formCtrl.$dirty) {
+                        if (!window.confirm(warningMessage)) {
+                            event.preventDefault();
+                        }
+                    }
+                });
+
+                // handle browser window/tab close
+                $(window).on('beforeunload', function (event) {
+                    if (formCtrl.$dirty) {
+                        return warningMessage;
+                    }
+                });
+
+                // clean up beforeunload handler when scope is destroyed
+                scope.$on('$destroy', function () {
+                    $(window).unbind('beforeunload');
+                });
+            }
+        };
+    }]);
 
 })(window, document);
 
@@ -864,6 +1079,59 @@ angular.module('cat.service').service('$breadcrumbs', function () {
 
 (function(window, document, undefined) {
 'use strict';
+
+
+angular.module('cat.service')
+    .factory('catListDataLoadingService', ['$api', '$route', '$q', function ($api, $route, $q) {
+        var load = function (endpoint, searchRequest) {
+            var deferred = $q.defer();
+            endpoint.list(searchRequest).then(
+                function success(data) {
+                    var pagination = searchRequest.pagination();
+
+                    deferred.resolve({
+                        count: data.totalCount,
+                        collection: data.elements,
+                        pagination: pagination,
+                        firstResult: (pagination.page - 1) * pagination.size + 1,
+                        lastResult: Math.min(pagination.page * pagination.size, data.totalCount),
+                        facets: data.facets,
+                        isSinglePageList: data.totalCount <= pagination.size,
+                        endpoint: endpoint,
+                        searchRequest: searchRequest
+                    });
+                },
+                function error(reason) {
+                    deferred.reject(reason);
+                });
+            return deferred.promise;
+        };
+        /**
+         *
+         * @param {String} endpointName
+         * @param {Object} [defaultSort={property:'name',isDesc:false}]
+         */
+        var resolve = function (endpointName, defaultSort) {
+            var searchRequest = new window.cat.SearchRequest($route.current.params);
+            if (!defaultSort) {
+                defaultSort = {property: 'name', isDesc: false};
+            }
+            if (!!defaultSort && !$route.current.params.sort) {
+                searchRequest.sort(defaultSort);
+            }
+            return load($api[endpointName], searchRequest);
+        };
+
+        return {
+            'load': load,
+            'resolve': resolve
+        };
+    }]);
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
 /**
  * Created by tscheinecker on 05.05.2014.
  */
@@ -918,28 +1186,40 @@ angular.module('cat.service')
 
 angular.module('cat.service')
     .factory('loadingService', function ($rootScope, usSpinnerService, $timeout) {
+        var timeout = 50;
+        var animationDuration = 200;
         var activeCount = 0;
-        var timer;
+        var startTime;
+        var startTimer, stopTimer;
 
         var start = function () {
-            if (!activeCount) {
-                timer = $timeout(function () {
+            if (!activeCount && !startTimer) {
+                if (!!stopTimer) {
+                    $timeout.cancel(stopTimer);
+                    stopTimer = undefined;
+                }
+                startTimer = $timeout(function () {
                     usSpinnerService.spin('loading-spinner');
                     $rootScope.loading = true;
-                }, 50);
+                    startTime = new Date().getTime();
+                }, timeout);
             }
             activeCount++;
         };
 
         var stop = function () {
             activeCount--;
-            if (!activeCount) {
-                if (!!timer) {
-                    $timeout.cancel(timer);
-                    timer = undefined;
+            if (!activeCount && !stopTimer) {
+                if (!!startTimer) {
+                    $timeout.cancel(startTimer);
+                    startTimer = undefined;
                 }
-                usSpinnerService.stop('loading-spinner');
-                $rootScope.loading = false;
+                var now = new Date().getTime();
+                var stopTimeout = timeout + (Math.max((animationDuration - (now - startTime)), 0));
+                stopTimer = $timeout(function () {
+                    usSpinnerService.stop('loading-spinner');
+                    $rootScope.loading = false;
+                }, stopTimeout);
             }
         };
 
@@ -997,7 +1277,9 @@ function MenuGroup(groupId, options) {
     };
 
     this.getEntries = function () {
-        return _menuEntries;
+        return _.sortBy(_menuEntries, function (entry) {
+            return entry.getOptions().sortOrder || 10000;
+        });
     };
 
     this.isGroup = function () {
@@ -1028,14 +1310,18 @@ function Menu(menuId, options) {
     };
 
     this.getGroups = function () {
-        return _.map(_menuGroups, function (menuGroup) {
+        return _.sortBy(_.map(_menuGroups, function (menuGroup) {
             return menuGroup;
+        }), function (menuGroup) {
+            return menuGroup.getOptions().sortOrder || 10000;
         });
     };
 
     this.getEntries = function (groupId) {
         if (_.isUndefined(groupId)) {
-            return _menuEntries;
+            return _.sortBy(_menuEntries, function (entry) {
+                return entry.getOptions().sortOrder || 10000;
+            });
         }
         return _menuGroups[groupId].getEntries();
     };
