@@ -311,133 +311,6 @@ window.cat.SearchRequest = function (searchUrlParams) {
 (function(window, document, undefined) {
 'use strict';
 
-
-function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, $controller, config, detail, parent) {
-    $scope.detail = detail;
-    $scope.editDetail = undefined;
-    $scope.$fieldErrors = {};
-
-    var endpoint = config.endpoint;
-    var baseUrl = config.baseUrl;
-    var templateUrls = config.templateUrls;
-    var Model = config.Model;
-
-    $scope.uiStack = config.uiStack;
-
-    $scope.editTemplate = templateUrls.edit;
-
-    if (_.isObject(templateUrls.view)) {
-        $scope.mainViewTemplate = templateUrls.view.main;
-        $scope.additionalViewTemplate = templateUrls.view.additional;
-    } else {
-        $scope.mainViewTemplate = templateUrls.view;
-    }
-
-    $scope.baseUrl = baseUrl;
-
-    $scope.title = function () {
-        var data = $scope.detail;
-        if (_.isUndefined(data)) {
-            return '';
-        }
-        return !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
-    };
-
-    var update = function () {
-        $breadcrumbs.replaceLast({
-            title: $scope.title()
-        });
-    };
-
-    var reload = function () {
-        endpoint.get($routeParams.id).then(function (data) {
-            $scope.detail = data;
-            update();
-        });
-    };
-
-    $scope.reloadDetails = reload;
-
-    $scope.exists = !!$routeParams.id && $routeParams.id !== 'new';
-
-    $scope.add = function () {
-        $scope.editDetail = new Model();
-    };
-
-    $scope.edit = function () {
-        $scope.editDetail = angular.copy($scope.detail);
-    };
-
-    $scope.cancelEdit = function () {
-        $scope.$broadcast('formReset');
-        if ($scope.exists) {
-            $scope.editDetail = undefined;
-            $globalMessages.clearMessages();
-            $scope.$fieldErrors = undefined;
-        } else {
-            $window.history.back();
-        }
-    };
-
-    $scope.remove = function () {
-        endpoint.remove($scope.detail.id).then(function () {
-            $location.path(baseUrl);
-        });
-    };
-
-    $scope.save = function () {
-        endpoint.save($scope.editDetail).then(function (data) {
-            $globalMessages.clearMessages();
-            $scope.$fieldErrors = undefined;
-            if (!$scope.exists) {
-                $scope.$broadcast('formReset');
-                $location.path(baseUrl + '/' + data.id);
-            } else {
-                $scope.editDetail = undefined;
-                $scope.detail = data;
-                update();
-            }
-        }, function (response) {
-            if (!response.data.fieldErrors) {
-                $scope.$fieldErrors = undefined;
-                return;
-            }
-            // group by field
-            var fieldErrors = {};
-            _.forEach(response.data.fieldErrors, function (fieldError) {
-                fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                fieldErrors[fieldError.field].push(fieldError.message);
-            });
-
-            $scope.$fieldErrors = fieldErrors;
-            $scope.$broadcast('fieldErrors', fieldErrors);
-        });
-    };
-
-    if ($scope.exists) {
-        if (_.isUndefined($scope.detail)) {
-            reload();
-        } else {
-            update();
-        }
-    } else {
-        if (_.isUndefined($scope.detail)) {
-            $scope.add();
-        } else {
-            $scope.edit();
-        }
-    }
-
-    // extend with custom controller
-    $controller(config.controller, {$scope: $scope, detail: detail, parent: parent, config: config});
-}
-
-angular.module('cat').controller('CatBaseDetailController', CatBaseDetailController);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-
 angular.module('cat')
     .directive('catAutofocus', function ($timeout) {
         return {
@@ -1016,6 +889,133 @@ angular.module('cat')
 (function(window, document, undefined) {
 'use strict';
 
+
+function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, $controller, config, detail, parent) {
+    $scope.detail = detail;
+    $scope.editDetail = undefined;
+    $scope.$fieldErrors = {};
+
+    var endpoint = config.endpoint;
+    var baseUrl = config.baseUrl;
+    var templateUrls = config.templateUrls;
+    var Model = config.Model;
+
+    $scope.uiStack = config.uiStack;
+
+    $scope.editTemplate = templateUrls.edit;
+
+    if (_.isObject(templateUrls.view)) {
+        $scope.mainViewTemplate = templateUrls.view.main;
+        $scope.additionalViewTemplate = templateUrls.view.additional;
+    } else {
+        $scope.mainViewTemplate = templateUrls.view;
+    }
+
+    $scope.baseUrl = baseUrl;
+
+    $scope.title = function () {
+        var data = $scope.detail;
+        if (_.isUndefined(data)) {
+            return '';
+        }
+        return !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
+    };
+
+    var update = function () {
+        $breadcrumbs.replaceLast({
+            title: $scope.title()
+        });
+    };
+
+    var reload = function () {
+        endpoint.get($routeParams.id).then(function (data) {
+            $scope.detail = data;
+            update();
+        });
+    };
+
+    $scope.reloadDetails = reload;
+
+    $scope.exists = !!$routeParams.id && $routeParams.id !== 'new';
+
+    $scope.add = function () {
+        $scope.editDetail = new Model();
+    };
+
+    $scope.edit = function () {
+        $scope.editDetail = angular.copy($scope.detail);
+    };
+
+    $scope.cancelEdit = function () {
+        $scope.$broadcast('formReset');
+        if ($scope.exists) {
+            $scope.editDetail = undefined;
+            $globalMessages.clearMessages();
+            $scope.$fieldErrors = undefined;
+        } else {
+            $window.history.back();
+        }
+    };
+
+    $scope.remove = function () {
+        endpoint.remove($scope.detail.id).then(function () {
+            $location.path(baseUrl);
+        });
+    };
+
+    $scope.save = function () {
+        endpoint.save($scope.editDetail).then(function (data) {
+            $globalMessages.clearMessages();
+            $scope.$fieldErrors = undefined;
+            if (!$scope.exists) {
+                $scope.$broadcast('formReset');
+                $location.path(baseUrl + '/' + data.id);
+            } else {
+                $scope.editDetail = undefined;
+                $scope.detail = data;
+                update();
+            }
+        }, function (response) {
+            if (!response.data.fieldErrors) {
+                $scope.$fieldErrors = undefined;
+                return;
+            }
+            // group by field
+            var fieldErrors = {};
+            _.forEach(response.data.fieldErrors, function (fieldError) {
+                fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
+                fieldErrors[fieldError.field].push(fieldError.message);
+            });
+
+            $scope.$fieldErrors = fieldErrors;
+            $scope.$broadcast('fieldErrors', fieldErrors);
+        });
+    };
+
+    if ($scope.exists) {
+        if (_.isUndefined($scope.detail)) {
+            reload();
+        } else {
+            update();
+        }
+    } else {
+        if (_.isUndefined($scope.detail)) {
+            $scope.add();
+        } else {
+            $scope.edit();
+        }
+    }
+
+    // extend with custom controller
+    $controller(config.controller, {$scope: $scope, detail: detail, parent: parent, config: config});
+}
+
+angular.module('cat').controller('CatBaseDetailController', CatBaseDetailController);
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
 angular.module('cat').
     filter('replaceText', function () {
         return function (text, pattern, options, replacement) {
@@ -1033,6 +1033,138 @@ angular.module('cat').
         };
     });
 
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
+
+var toLowerCaseName = function (name) {
+    if (!name) {
+        return '';
+    }
+    return name.toLowerCase();
+};
+
+
+/**
+ * Helper function for list routes
+ * @param config
+ * @returns {{templateUrl: string, controller: string, reloadOnSearch: boolean, resolve: {listData: *[]}}}
+ */
+var listRoute = function (config) {
+    var name = toLowerCaseName(config.name);
+    return {
+        templateUrl: config.templateUrl || (name + '/' + name + '-list.tpl.html'),
+        controller: config.controller || config.name + 'Controller',
+        reloadOnSearch: false,
+        resolve: {
+            listData: ['catListDataLoadingService', function (catListDataLoadingService) {
+                return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
+            }]
+        }
+    };
+};
+
+var detailRoute = function (config) {
+    var endpointName, parentEndpointName;
+
+    if (_.isString(config.endpoint)) {
+        endpointName = config.endpoint;
+    } else if (_.isObject(config.endpoint)) {
+        parentEndpointName = config.endpoint.parent;
+        endpointName = config.endpoint.name;
+    } else {
+        endpointName = toLowerCaseName(config.name);
+    }
+
+    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
+
+    var parentUrl = (parentEndpointName ? parentEndpointName + '/' : '');
+    var parentTemplateNamePrefix = (parentEndpointName ? parentEndpointName + '-' : '');
+
+    var templateUrls = {
+        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
+        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
+    };
+
+    if (config.additionalViewTemplate === true) {
+        templateUrls.view = {
+            main: templateUrls.view,
+            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
+        };
+    }
+
+    return {
+        templateUrl: config.templateUrl || 'template/base-detail.tpl.html',
+        controller: 'CatBaseDetailController',
+        reloadOnSearch: config.reloadOnSearch,
+        resolve: {
+            config: function ($api, $route) {
+                var currentRoute = $route.current.originalPath;
+                var endpoint = $api[endpointName];
+
+                if (!_.isUndefined(parentEndpointName)) {
+                    endpoint = $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName];
+                }
+
+                var baseUrl = config.baseUrl;
+
+                if (_.isUndefined(baseUrl)) {
+                    var baseUrlTemplate = currentRoute.substring(0, currentRoute.lastIndexOf('/'));
+                    if (!_.isUndefined(parentEndpointName)) {
+                        baseUrl = baseUrlTemplate.replace(':' + config.endpoint.id, $route.current.params[config.endpoint.id]);
+                    } else {
+                        baseUrl = baseUrlTemplate;
+                    }
+                }
+
+                return {
+                    controller: config.controller || config.name + 'DetailsController',
+                    endpoint: endpoint,
+                    Model: Model,
+                    templateUrls: templateUrls,
+                    baseUrl: baseUrl
+                };
+            },
+            parent: ['$api', '$route', function ($api, $route) {
+                if (_.isUndefined(parentEndpointName)) {
+                    return null;
+                }
+
+                return $api[parentEndpointName].info($route.current.params[config.endpoint.id]);
+            }],
+            detail: ['$api', '$route', function ($api, $route) {
+                var detailId = $route.current.params.id;
+                if (detailId === 'new') {
+                    return new Model();
+                }
+                if (_.isUndefined(parentEndpointName)) {
+                    return $api[endpointName].get(detailId);
+                } else {
+                    return $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName].get(detailId);
+                }
+            }]
+        }
+    };
+};
+
+window.cat.util.route = {
+    list: listRoute,
+    detail: detailRoute
+};
 })(window, document);
 
 (function(window, document, undefined) {
@@ -1593,136 +1725,4 @@ angular.module('cat.service').service('$globalMessages', function ($rootScope) {
     });
 });
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
-
-var toLowerCaseName = function (name) {
-    if (!name) {
-        return '';
-    }
-    return name.toLowerCase();
-};
-
-
-/**
- * Helper function for list routes
- * @param config
- * @returns {{templateUrl: string, controller: string, reloadOnSearch: boolean, resolve: {listData: *[]}}}
- */
-var listRoute = function (config) {
-    var name = toLowerCaseName(config.name);
-    return {
-        templateUrl: config.templateUrl || (name + '/' + name + '-list.tpl.html'),
-        controller: config.controller || config.name + 'Controller',
-        reloadOnSearch: false,
-        resolve: {
-            listData: ['catListDataLoadingService', function (catListDataLoadingService) {
-                return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
-            }]
-        }
-    };
-};
-
-var detailRoute = function (config) {
-    var endpointName, parentEndpointName;
-
-    if (_.isString(config.endpoint)) {
-        endpointName = config.endpoint;
-    } else if (_.isObject(config.endpoint)) {
-        parentEndpointName = config.endpoint.parent;
-        endpointName = config.endpoint.name;
-    } else {
-        endpointName = toLowerCaseName(config.name);
-    }
-
-    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
-
-    var parentUrl = (parentEndpointName ? parentEndpointName + '/' : '');
-    var parentTemplateNamePrefix = (parentEndpointName ? parentEndpointName + '-' : '');
-
-    var templateUrls = {
-        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
-        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
-    };
-
-    if (config.additionalViewTemplate === true) {
-        templateUrls.view = {
-            main: templateUrls.view,
-            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
-        };
-    }
-
-    return {
-        templateUrl: config.templateUrl || 'template/base-detail.tpl.html',
-        controller: 'CatBaseDetailController',
-        reloadOnSearch: config.reloadOnSearch,
-        resolve: {
-            config: function ($api, $route) {
-                var currentRoute = $route.current.originalPath;
-                var endpoint = $api[endpointName];
-
-                if (!_.isUndefined(parentEndpointName)) {
-                    endpoint = $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName];
-                }
-
-                var baseUrl = config.baseUrl;
-
-                if (_.isUndefined(baseUrl)) {
-                    var baseUrlTemplate = currentRoute.substring(0, currentRoute.lastIndexOf('/'));
-                    if (!_.isUndefined(parentEndpointName)) {
-                        baseUrl = baseUrlTemplate.replace(':' + config.endpoint.id, $route.current.params[config.endpoint.id]);
-                    } else {
-                        baseUrl = baseUrlTemplate;
-                    }
-                }
-
-                return {
-                    controller: config.controller || config.name + 'DetailsController',
-                    endpoint: endpoint,
-                    Model: Model,
-                    templateUrls: templateUrls,
-                    baseUrl: baseUrl
-                };
-            },
-            parent: ['$api', '$route', function ($api, $route) {
-                if (_.isUndefined(parentEndpointName)) {
-                    return null;
-                }
-
-                return $api[parentEndpointName].info($route.current.params[config.endpoint.id]);
-            }],
-            detail: ['$api', '$route', function ($api, $route) {
-                var detailId = $route.current.params.id;
-                if (detailId === 'new') {
-                    return new Model();
-                }
-                if (_.isUndefined(parentEndpointName)) {
-                    return $api[endpointName].get(detailId);
-                } else {
-                    return $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName].get(detailId);
-                }
-            }]
-        }
-    };
-};
-
-window.cat.util.route = {
-    list: listRoute,
-    detail: detailRoute
-};
 })(window, document);
