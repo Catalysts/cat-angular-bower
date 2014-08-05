@@ -17,11 +17,11 @@
 'use strict';
 window.cat = {};
 
-angular.module('cat.service', ['angularSpinner']);
 angular.module('cat.directives', ['ui.select2']);
 angular.module('cat.controller', []);
 angular.module('cat.template', []);
 angular.module('cat.api', []);
+angular.module('cat.service', ['angularSpinner', 'ngRoute', 'cat.api']);
 angular.module('cat', [
     'cat.api',
     'cat.service',
@@ -66,6 +66,10 @@ function ApiEndpoint(url, endpointName, settings, $http) {
             delete object[key];
         });
         return object;
+    };
+
+    this.getEndpointUrl = function () {
+        return _endpointUrl;
     };
 
     this.list = function (searchRequest) {
@@ -307,21 +311,9 @@ window.cat.SearchRequest = function (searchUrlParams) {
 (function(window, document, undefined) {
 'use strict';
 
-window.BaseDetailController = function ($injector, $scope, endpoint, templateUrls, baseUrl, Model) {
-    $injector.invoke(window.BaseDetailController2, this, {
-        $scope: $scope,
-        config: {
-            endpoint: endpoint,
-            Model: Model,
-            templateUrls: templateUrls,
-            baseUrl: baseUrl
-        }
-    });
-};
-window.BaseDetailController.$inject = ['$injector', '$scope', 'endpoint', 'templateUrls', 'baseUrl', 'Model'];
 
-window.BaseDetailController2 = function ($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, config) {
-
+function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, $controller, config, detail, parent) {
+    $scope.detail = detail;
     $scope.editDetail = undefined;
     $scope.$fieldErrors = {};
 
@@ -435,10 +427,12 @@ window.BaseDetailController2 = function ($scope, $routeParams, $breadcrumbs, $lo
             $scope.edit();
         }
     }
-};
 
-window.BaseDetailController2.$inject = ['$scope', '$routeParams', '$breadcrumbs', '$location', '$window', '$globalMessages', 'config'];
+    // extend with custom controller
+    $controller(config.controller, {$scope: $scope, detail: detail, parent: parent, config: config});
+}
 
+angular.module('cat').controller('CatBaseDetailController', CatBaseDetailController);
 })(window, document);
 
 (function(window, document, undefined) {
@@ -1133,6 +1127,100 @@ angular.module('cat.service')
 (function(window, document, undefined) {
 'use strict';
 /**
+ * Created by tscheinecker on 05.08.2014.
+ */
+
+
+
+function CatRouteServiceProvider($routeProvider) {
+    var viewNames = [];
+
+    this.listAndDetailRoute = function (baseUrl, name, config) {
+        viewNames.push(name);
+
+
+        var listUrl = baseUrl + '/' + name.toLowerCase() + 's';
+
+        if (!!config && config.url) {
+            listUrl = baseUrl + '/' + config.url || listUrl;
+        }
+
+        var listConfig = !!config ? config.list : {};
+        var detailsConfig = !!config ? config.details : {};
+        var nameConf = {
+            name: name
+        };
+
+        $routeProvider
+            .when(listUrl, window.cat.util.route.list(_.assign({}, nameConf, listConfig)))
+            .when(listUrl + '/:id', window.cat.util.route.detail(_.assign({}, nameConf, detailsConfig)));
+    };
+
+
+    this.$get = function () {
+        return viewNames;
+    };
+}
+
+
+angular.module('cat.service').provider('catRouteService', CatRouteServiceProvider);
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 05.08.2014.
+ */
+
+
+
+function CatViewServiceProvider(catRouteServiceProvider, $apiProvider) {
+    var viewNames = [];
+    var endpointNames = [];
+
+    this.listAndDetailView = function (baseUrl, name, config) {
+        var endpointName = name.toLowerCase();
+        var url = endpointName + 's';
+
+        if (!!config) {
+            url = config.url || url;
+        }
+
+        var listUrl = baseUrl + '/' + url;
+
+        var endpoint = {
+            model: window.cat.util.defaultModelResolver(name),
+            url: url
+        };
+
+        if (!!config) {
+            endpoint = _.assign(endpoint, config.endpoint);
+        }
+
+
+        viewNames.push(name);
+        endpointNames.push(endpointName);
+
+        $apiProvider.endpoint(name.toLowerCase(), endpoint);
+        catRouteServiceProvider.listAndDetailRoute(baseUrl, name, config);
+    };
+
+
+    this.$get = function () {
+        return {
+            views: viewNames,
+            endpoints: endpointNames
+        };
+    };
+}
+
+
+angular.module('cat.service').provider('catViewService', CatViewServiceProvider);
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
  * Created by tscheinecker on 05.05.2014.
  */
 
@@ -1505,4 +1593,136 @@ angular.module('cat.service').service('$globalMessages', function ($rootScope) {
     });
 });
 
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
+
+var toLowerCaseName = function (name) {
+    if (!name) {
+        return '';
+    }
+    return name.toLowerCase();
+};
+
+
+/**
+ * Helper function for list routes
+ * @param config
+ * @returns {{templateUrl: string, controller: string, reloadOnSearch: boolean, resolve: {listData: *[]}}}
+ */
+var listRoute = function (config) {
+    var name = toLowerCaseName(config.name);
+    return {
+        templateUrl: config.templateUrl || (name + '/' + name + '-list.tpl.html'),
+        controller: config.controller || config.name + 'Controller',
+        reloadOnSearch: false,
+        resolve: {
+            listData: ['catListDataLoadingService', function (catListDataLoadingService) {
+                return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
+            }]
+        }
+    };
+};
+
+var detailRoute = function (config) {
+    var endpointName, parentEndpointName;
+
+    if (_.isString(config.endpoint)) {
+        endpointName = config.endpoint;
+    } else if (_.isObject(config.endpoint)) {
+        parentEndpointName = config.endpoint.parent;
+        endpointName = config.endpoint.name;
+    } else {
+        endpointName = toLowerCaseName(config.name);
+    }
+
+    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
+
+    var parentUrl = (parentEndpointName ? parentEndpointName + '/' : '');
+    var parentTemplateNamePrefix = (parentEndpointName ? parentEndpointName + '-' : '');
+
+    var templateUrls = {
+        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
+        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
+    };
+
+    if (config.additionalViewTemplate === true) {
+        templateUrls.view = {
+            main: templateUrls.view,
+            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
+        };
+    }
+
+    return {
+        templateUrl: config.templateUrl || 'template/base-detail.tpl.html',
+        controller: 'CatBaseDetailController',
+        reloadOnSearch: config.reloadOnSearch,
+        resolve: {
+            config: function ($api, $route) {
+                var currentRoute = $route.current.originalPath;
+                var endpoint = $api[endpointName];
+
+                if (!_.isUndefined(parentEndpointName)) {
+                    endpoint = $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName];
+                }
+
+                var baseUrl = config.baseUrl;
+
+                if (_.isUndefined(baseUrl)) {
+                    var baseUrlTemplate = currentRoute.substring(0, currentRoute.lastIndexOf('/'));
+                    if (!_.isUndefined(parentEndpointName)) {
+                        baseUrl = baseUrlTemplate.replace(':' + config.endpoint.id, $route.current.params[config.endpoint.id]);
+                    } else {
+                        baseUrl = baseUrlTemplate;
+                    }
+                }
+
+                return {
+                    controller: config.controller || config.name + 'DetailsController',
+                    endpoint: endpoint,
+                    Model: Model,
+                    templateUrls: templateUrls,
+                    baseUrl: baseUrl
+                };
+            },
+            parent: ['$api', '$route', function ($api, $route) {
+                if (_.isUndefined(parentEndpointName)) {
+                    return null;
+                }
+
+                return $api[parentEndpointName].info($route.current.params[config.endpoint.id]);
+            }],
+            detail: ['$api', '$route', function ($api, $route) {
+                var detailId = $route.current.params.id;
+                if (detailId === 'new') {
+                    return new Model();
+                }
+                if (_.isUndefined(parentEndpointName)) {
+                    return $api[endpointName].get(detailId);
+                } else {
+                    return $api[parentEndpointName].res($route.current.params[config.endpoint.id])[endpointName].get(detailId);
+                }
+            }]
+        }
+    };
+};
+
+window.cat.util.route = {
+    list: listRoute,
+    detail: detailRoute
+};
 })(window, document);
