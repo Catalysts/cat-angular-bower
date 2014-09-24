@@ -79,18 +79,44 @@ try {
   module = angular.module('cat', []);
 }
 module.run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/cat-base-list.tpl.html',
+    '<h2>\n' +
+    '    {{catBaseListController.title}}\n' +
+    '    <a ng-href="{{catBaseListController.getUrlForNewPage()}}" class="btn btn-primary pull-right">\n' +
+    '        <span class="glyphicon glyphicon-plus"></span> New\n' +
+    '    </a>\n' +
+    '</h2>\n' +
+    '\n' +
+    '<cat-paginated search-props="{{catBaseListController.searchProps}}">\n' +
+    '    <ng-include src="catBaseListController.config.listTemplateUrl"></ng-include>\n' +
+    '</cat-paginated>\n' +
+    '');
+}]);
+})();
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+(function(module) {
+try {
+  module = angular.module('cat');
+} catch (e) {
+  module = angular.module('cat', []);
+}
+module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-facets.tpl.html',
     '<div class="sidebar">\n' +
     '    <ul class="nav sidenav">\n' +
-    '        <li ng-repeat="facet in facets">\n' +
+    '        <li ng-repeat="facet in listData.facets">\n' +
     '            <h4>{{facetName(facet)}}\n' +
     '                <small ng-if="!isActive(facet)">\n' +
     '                    <a ng-click="showAll(facet)" href="">See all</a>\n' +
     '                </small>\n' +
     '            </h4>\n' +
     '            <ul class="nav">\n' +
-    '                <li ng-repeat="term in facet.terms" ng-class="{\'active\': isActive(facet,term)}" cat-load-more="5">\n' +
-    '                    <a ng-if="showItem(facet,term)" href="" ng-click="setActive(facet,term)">{{term.name}}\n' +
+    '                <li ng-repeat="term in facet.terms" cat-load-more="5">\n' +
+    '                    <a href="" ng-click="setActive(facet,term)">{{term.name}}\n' +
     '                        <span class="text-muted">({{term.count}})</span>\n' +
     '                    </a>\n' +
     '                </li>\n' +
@@ -172,21 +198,21 @@ module.run(['$templateCache', function($templateCache) {
     '            <input class="form-control" placeholder="Search by {{prop}}" ng-model="listData.search[prop]">\n' +
     '        </div>\n' +
     '    </div>\n' +
-    '    <div class="row text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
-    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
+    '    <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
     '                    page="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
     '    </div>\n' +
-    '    <div class="row text-center">\n' +
-    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0">\n' +
+    '    <div class="text-center">\n' +
+    '    <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0">\n' +
     '            {{listData.count}} Einträge gefunden. Einträge {{listData.firstResult}}-{{listData.lastResult}}\n' +
     '        </div>\n' +
     '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count === 0">\n' +
     '        Keine Einträge gefunden\n' +
     '        </div>\n' +
     '    </div>\n' +
-    '    <div class="row" ng-transclude ng-show="listData.count !== 0"></div>\n' +
-    '    <div class="row text-center" ng-if="!listData.isSinglePageList && istData.count !== 0">\n' +
+    '    <div ng-transclude ng-show="listData.count !== 0"></div>\n' +
+    '    <div class="text-center" ng-if="!listData.isSinglePageList && istData.count !== 0">\n' +
     '    <pagination total-items="listData.count" items-per-page="listData.pagination.size" page="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
     '    </div>\n' +

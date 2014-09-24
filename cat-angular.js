@@ -251,18 +251,17 @@ window.cat.SearchRequest = function (searchUrlParams) {
  *
  * @param $scope
  * @param $routeParams
- * @param $breadcrumbs
  * @param $location
  * @param $window
  * @param $globalMessages
  * @param $controller
+ * @param $log
+ * @param catBreadcrumbsService
  * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
- * @param {Object} detail the actual object which is shown / edited
- * @param {Array} parents the list of 'parent' objects used for breadcrumb / ui stack generation
  * @constructor
  */
-function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, $window, $globalMessages, $controller, config, detail, parents) {
-    $scope.detail = detail;
+function CatBaseDetailController($scope, $routeParams, $location, $window, $globalMessages, $controller, $log, catBreadcrumbsService, config) {
+    $scope.detail = config.detail;
     $scope.editDetail = undefined;
     $scope.$fieldErrors = {};
 
@@ -271,59 +270,11 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
     var templateUrls = config.templateUrls;
     var Model = config.Model;
 
-    var breadcrumbs = [];
+    $scope.uiStack = catBreadcrumbsService.generateFromConfig(config);
 
-    function capitalize(string) {
-        return string.charAt(0).toUpperCase() + string.substring(1);
-    }
-
-    $scope.uiStack = [];
-
-    function splitShiftAndJoin(path, amount) {
-        return _.initial(path.split('/'), amount).join('/');
-    }
-
-    if (!_.isUndefined(config.endpoint.parentEndpoint)) {
-        var currentEndpoint = config.endpoint;
-        var parentEndpoint = currentEndpoint.parentEndpoint;
-        var parentUrl = baseUrl;
-        var count = 0;
-
-        while (!_.isUndefined(parentEndpoint)) {
-            var parent = parents[count++];
-            parentUrl = splitShiftAndJoin(parentUrl, 1);
-
-            var detailBreadcrumb = {
-                url: '#' + parentUrl + '?tab=' + currentEndpoint.getEndpointName() + 's',
-                title: parent.name
-            };
-            $scope.uiStack.unshift(detailBreadcrumb);
-            breadcrumbs.unshift(detailBreadcrumb);
-
-            parentUrl = splitShiftAndJoin(parentUrl, 1);
-            var breadcrumb = {
-                title: capitalize(parentEndpoint.getEndpointName()) + 's',
-                url: '#' + parentUrl
-            };
-            breadcrumbs.unshift(breadcrumb);
-
-            currentEndpoint = parentEndpoint;
-            parentEndpoint = currentEndpoint.parentEndpoint;
-        }
-    } else {
-        breadcrumbs.push({
-            title: capitalize(config.endpoint.getEndpointName()) + 's',
-            url: '#' + baseUrl
-        });
-    }
-
-    breadcrumbs.push(
-        {
-            title: $routeParams.id === 'new' ? 'New' : ''
-        }
-    );
-
-    $breadcrumbs.set(breadcrumbs);
+    catBreadcrumbsService.push({
+        title: $routeParams.id === 'new' ? 'New' : ''
+    });
 
     $scope.editTemplate = templateUrls.edit;
 
@@ -348,7 +299,7 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
     };
 
     var update = function () {
-        $breadcrumbs.replaceLast({
+        catBreadcrumbsService.replaceLast({
             title: $scope.title()
         });
     };
@@ -374,7 +325,7 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
     $scope.add = function () {
         $scope.editDetail = new Model();
         if (_.isFunction($scope.editDetail.setParent)) {
-            $scope.editDetail.setParent(parents[0]);
+            $scope.editDetail.setParent(config.parents[0]);
         }
     };
 
@@ -384,7 +335,7 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
     $scope.edit = function () {
         $scope.editDetail = angular.copy($scope.detail);
         if (_.isFunction($scope.editDetail.setParent)) {
-            $scope.editDetail.setParent(parents[0]);
+            $scope.editDetail.setParent(config.parents[0]);
         }
     };
 
@@ -408,7 +359,13 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
      */
     $scope.remove = function () {
         endpoint.remove($scope.detail.id).then(function () {
-            $location.path(baseUrl);
+            if (_.isEmpty($scope.uiStack)) {
+                $location.path(baseUrl);
+            } else {
+                var parentUrl = $scope.uiStack[$scope.uiStack.length - 1].url;
+                $location.path(parentUrl.substring(1, parentUrl.indexOf('?')));
+                $location.search('tab', window.cat.util.pluralize(endpoint.getEndpointName()));
+            }
         });
     };
 
@@ -461,11 +418,77 @@ function CatBaseDetailController($scope, $routeParams, $breadcrumbs, $location, 
         }
     }
 
-    // extend with custom controller
-    $controller(config.controller, {$scope: $scope, detail: detail, parents: parents, config: config});
+
+    try {
+        // extend with custom controller
+        $controller(config.controller, {$scope: $scope, detail: config.detail, parents: config.parents, config: config});
+    } catch (unused) {
+        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
+    }
 }
 
 angular.module('cat').controller('CatBaseDetailController', CatBaseDetailController);
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+
+/**
+ * @ngdoc function
+ *
+ * @description
+ * The CatBaseListController takes care of providing several common properties to the scope
+ * of every list page. It also instantiates the controller given via the config.controller parameter and shares
+ * the same scope with it. In addition it has a common template 'cat-base-list.tpl.html' which shows a title,
+ * new button and provides the cat-paginated directive.
+ *
+ * Common properties include:
+ * * listData - the listData to be used by cat-paginated
+ * * title - the title of the view
+ * * searchProps - the list of search properties passed on to the cat-paginated directive
+ * * config - the config object used to instantiate this view
+ *
+ * @param $scope
+ * @param $controller
+ * @param $log
+ * @param catBreadcrumbsService
+ * @param {Object} config holds data like the listData object, the template url, base url, the model constructor, etc.
+ * @constructor
+ */
+function CatBaseListController($scope, $controller, $log, catBreadcrumbsService, config) {
+
+    catBreadcrumbsService.set([
+        {
+            title: config.title
+        }
+    ]);
+
+    $scope.listData = config.listData;
+
+    this.title = config.title;
+    this.searchProps = config.searchProps;
+    this.config = config;
+
+    this.getUrlForId = function (id) {
+        return '#' + config.baseUrl + '/' + id;
+    };
+
+    this.getUrlForNewPage = function () {
+        return this.getUrlForId('new');
+    };
+
+
+    try {
+        // extend with custom controller
+        $controller(config.controller, {$scope: $scope, listData: config.listData, config: config});
+    } catch (unused) {
+        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
+    }
+}
+
+angular.module('cat').controller('CatBaseListController', CatBaseListController);
+
 })(window, document);
 
 (function(window, document, undefined) {
@@ -477,7 +500,11 @@ angular.module('cat')
             restrict: 'A',
             link: function CatAutofocusLink(scope, element) {
                 $timeout(function () {
-                    element[0].focus();
+                    if (!_.isUndefined(element.data('select2'))) {
+                        element.select2('open');
+                    } else {
+                        element[0].focus();
+                    }
                 }, 100);
             }
         };
@@ -533,33 +560,48 @@ angular.module('cat')
 
 angular.module('cat')
     .directive('catFacets', function CatFacetsDirective() {
+        function _initDefaults(scope) {
+            if (_.isUndefined(scope.listData)) {
+                scope.listData = scope.$parent.listData;
+            }
+        }
+
+        function _checkConditions(scope) {
+            if (_.isUndefined(scope.listData)) {
+                throw new Error('listData was not defined and couldn\'t be found with default value');
+            }
+
+            if (_.isUndefined(scope.listData.facets)) {
+                throw new Error('No facets are available within given listData');
+            }
+        }
+
         return {
             replace: true,
             restrict: 'E',
             scope: {
-                facets: '=',
+                listData: '=?',
                 names: '='
             },
             templateUrl: 'template/cat-facets.tpl.html',
             link: function CatFacetsLink(scope) {
-                if (scope.facets === undefined) throw 'Attribute facets must be set!';
+                _initDefaults(scope);
+                _checkConditions(scope);
             },
-            controller: function ($scope, $location, $rootScope) {
+            controller: function CatFacetsController($scope) {
 
-                $scope.isActive = function (facet, term) {
-                    var search = $location.search();
-                    var name = 'search.' + facet.name;
-                    if (!!search[name]) {
-                        return !!term && search[name] === term.id;
-                    } else {
-                        return true;
-                    }
+                function _search(search) {
+                    return $scope.listData.searchRequest.search(search);
+                }
+
+                $scope.isActive = function (facet) {
+                    return !_search()[facet.name];
                 };
 
                 $scope.showAll = function (facet) {
-                    var search = new window.cat.SearchRequest($location.search()).search();
+                    var search = _search();
                     delete search[facet.name];
-                    $rootScope.$broadcast('SearchChanged', search);
+                    _search(search);
                 };
 
                 $scope.facetName = function (facet) {
@@ -572,20 +614,9 @@ angular.module('cat')
 
                 $scope.setActive = function (facet, term) {
                     facet.activeTerm = term;
-                    var search = new window.cat.SearchRequest($location.search()).search();
+                    var search = _search();
                     search[facet.name] = term.id;
-                    $rootScope.$broadcast('SearchChanged', search);
-
-                };
-
-                $scope.remove = function (facet) {
-                    var search = new window.cat.SearchRequest($location.search()).search();
-                    delete search[facet.name];
-                    $rootScope.$broadcast('SearchChanged', search);
-                };
-
-                $scope.showItem = function (facet, term) {
-                    return $scope.isActive(facet) || $scope.isActive(facet, term);
+                    _search(search);
                 };
             }
         };
@@ -832,11 +863,15 @@ angular.module('cat')
 
                 $scope.$watch('listData.search', updateSearch, true);
 
-                $scope.$on('SortChanged', function (event, value) {
+                this.sort = function (value) {
                     searchRequest.sort(value);
                     updateLocation();
                     $scope.listData.pagination.page = 1;
                     reload();
+                };
+
+                $scope.$on('SortChanged', function (event, value) {
+                    this.sort(value);
                 });
             }
         };
@@ -886,6 +921,9 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
             });
         };
         quietMillis = 0;
+    } else if (_.isFunction(options.endpoint)) {
+        transport = options.endpoint;
+        quietMillis = 500;
     } else if (_.isObject(options.endpoint)) {
         transport = fetchElements(options.endpoint, options.sort);
         quietMillis = 500;
@@ -899,7 +937,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
         transport = fetchElements(api, options.sort);
         quietMillis = 500;
     } else {
-        $log.error('The given endpoint has to be one of the following types: array, object, string - but was ' + (typeof options.endpoint));
+        $log.error('The given endpoint has to be one of the following types: array, object, string or function - but was ' + (typeof options.endpoint));
         $scope.elements = [];
         return;
     }
@@ -949,7 +987,8 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
  * values which are provided via the options object will be overridden.
  *
  * An config / options object has the following properties:
- * - endpoint: This can either be an array, in which case it will directly be treated as the source, an endpoint name, or an endpoint object
+ * - endpoint: This can either be an array, in which case it will directly be treated as the source, an endpoint name
+ * or an endpoint object to call the given endpoint, or a function which is used as the 'transport' function
  * - sort: An object which defines the 'sort' property and direction used when retrieving the list from an endpoint
  * - ui-select2: An config object which supports all options provided by the 'ui-select2' directive
  *
@@ -997,13 +1036,14 @@ angular.module('cat')
     .directive('catSortable', function CatSortableDirective($compile) {
         return {
             restrict: 'AC',
-            link: function CatSortableLink(scope, element, attrs) {
+            require: '^catPaginated',
+            link: function CatSortableLink(scope, element, attrs, catPaginatedController) {
                 var title = element.text();
                 var property = attrs.catSortable || title.toLowerCase().trim();
 
                 // todo - make configurable
                 scope.sort = scope.listData.searchRequest.sort();
-
+                scope.catPaginatedController = catPaginatedController;
                 var icon = 'glyphicon-sort-by-attributes';
 
                 if (!!attrs.sortMode) {
@@ -1025,7 +1065,8 @@ angular.module('cat')
                         $scope.sort.property = property;
                         $scope.sort.isDesc = false;
                     }
-                    $scope.$parent.$broadcast('SortChanged', $scope.sort); // broadcast from the parent scope (= controller or transclude scope)
+
+                    $scope.catPaginatedController.sort($scope.sort);
                 };
 
                 $scope.$on('SortChanged', function (event, value) {
@@ -1034,7 +1075,6 @@ angular.module('cat')
             }
         };
     });
-
 })(window, document);
 
 (function(window, document, undefined) {
@@ -1145,43 +1185,15 @@ angular.module('cat')
 (function(window, document, undefined) {
 'use strict';
 
-angular.module('cat.service').service('$breadcrumbs', function CatBreadcrumbsService() {
-    var _bc = [];
 
-    this.clear = function (bc) {
-        _bc = [];
-    };
-
-    this.set = function (bc) {
-        _bc = bc;
-    };
-
-    this.get = function () {
-        return _bc;
-    };
-
-    this.push = function (entry) {
-        _bc.push(entry);
-    };
-
-    this.pop = function () {
-        _bc.pop();
-    };
-
-    this.length = function () {
-        return _bc.length;
-    };
-
-    this.replaceLast = function (newVal) {
-        _bc[_bc.length - 1] = newVal;
-    };
-});
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-
-
+/**
+ * A CatApiEndpoint wraps several helper functions to easily execute backend calls for the base CRUD operations.
+ * It also adds support for 'children' which can only be used by resolving them for a parent id.
+ * @param {string} url the base url which is added before the configured urls
+ * @param {object} endpointConfig the configuration of this endpoint - holds properties like name, url, the model and children
+ * @param {object} $http the angular $http service which handles the actual xhr requests
+ * @constructor
+ */
 function CatApiEndpoint(url, endpointConfig, $http) {
     var that = this;
 
@@ -1190,6 +1202,12 @@ function CatApiEndpoint(url, endpointConfig, $http) {
     var ModelClass = endpointConfig.config.model;
     var _childEndpointSettings = endpointConfig.children;
 
+    /**
+     * This helper function initializes all configured child endpoints by creating the appropriate url by appending
+     * the given id before initializing them.
+     * @return {object} a object holding all resolved child endpoints for the given id
+     * @private
+     */
     var _res = _.memoize(function (id) {
         var url = _endpointUrl + '/' + id + '/';
         var ret = {};
@@ -1204,16 +1222,26 @@ function CatApiEndpoint(url, endpointConfig, $http) {
         return ret;
     });
 
-    this.res = function (id) {
-        return _res(id);
-    };
-
-    var mapResponse = function (data) {
+    /**
+     * This helper method initializes a new instance of the configured model with the given data and adds all child
+     * endpoints to it.
+     * @param data the data received from the backend which is used to initialize the model
+     * @return {Object} an instance of the configured model initialized with the given data and the resolved child
+     * endpoints
+     * @private
+     */
+    var _mapResponse = function (data) {
         var object = new ModelClass(data);
         return _.merge(object, _res(object.id));
     };
 
-    var removeEndpoints = function (object) {
+    /**
+     * This helper methods deletes all child endpoints from the given object.
+     * @param {object} object the object to remove the child endpoints from
+     * @return {object} the passed in object without the child endpoints
+     * @private
+     */
+    var _removeEndpoints = function (object) {
         var endpoints = _res(object.id);
         _.forEach(_.keys(endpoints), function (key) {
             delete object[key];
@@ -1221,14 +1249,43 @@ function CatApiEndpoint(url, endpointConfig, $http) {
         return object;
     };
 
+    /**
+     * This method is used to instantiate actual child api endpoints which are dependent on a certain parent id
+     * @param id the id for which to 'resolve' the child endpoints.
+     * @return {object} a object which maps all child endpoint names to the actual endpoints where the url was resolved
+     * with the provided id
+     */
+    this.res = function (id) {
+        return _res(id);
+    };
+
+    /**
+     * A small helper function to retrieve the actual url this endpoint resolved to.
+     * @return {string} the resolved url of this endpoint
+     */
     this.getEndpointUrl = function () {
         return _endpointUrl;
     };
 
+    /**
+     * A small helper to retrieve the name of the endpoint.
+     * @return {string} the name of this endpoint
+     */
     this.getEndpointName = function () {
         return _endpointName;
     };
 
+    /**
+     * This function calls the url available via #getEndpointUrl without further modification apart from adding search
+     * parameters if the searchRequest parameter is provided. It can handle either an array response in which case all
+     * elements will be mapped to the appropriate configured model or a 'paginated' result in which case an object
+     * with totalCount, facests and elements will be returned.
+     *
+     * @param {SearchRequest} [searchRequest] if given searchRequest#urlEncoded() will be added to the request url
+     * @return {[{object}]|{totalCount: {Number}, facets: [{Facet}], elements: []}} a promise wrapping either a list of
+     * instances of the configured model or a wrapper object which holds not only the list but pagination information
+     * as well
+     */
     this.list = function (searchRequest) {
         var searchQuery = !!searchRequest && searchRequest instanceof window.cat.SearchRequest ? '?' + searchRequest.urlEncoded() : '';
         return $http.get(_endpointUrl + searchQuery).then(function (response) {
@@ -1245,60 +1302,114 @@ function CatApiEndpoint(url, endpointConfig, $http) {
                     totalCount: response.data.totalCount,
                     facets: facets,
                     elements: _.map(response.data.elements, function (elem) {
-                        return mapResponse(elem);
+                        return _mapResponse(elem);
                     })
                 };
             } else {
                 return _.map(response.data, function (elem) {
-                    return mapResponse(elem);
+                    return _mapResponse(elem);
                 });
             }
         });
     };
 
+    /**
+     * A helper function which adds '/all' to the request url available via #getEndpointUrl and maps the response to
+     * the configured model.
+     * @return [{object}] a promise wrapping an array of new instances of the configured model initialized with the data retrieved from
+     * the backend
+     */
     this.all = function () {
         return $http.get(_endpointUrl + '/all').then(function (response) {
             return _.map(response.data, function (elem) {
-                return mapResponse(elem);
+                return _mapResponse(elem);
             });
         });
     };
 
+    /**
+     * This method makes a GET request the url available via #getEndpointUrl with the addition of the provided id at the end.
+     * @param id the id which will be appended as '/:id' to the url
+     * @return {object} a promise wrapping a new instance of the configured model initialized with the data retrieved
+     * from the backend
+     */
     this.get = function (id) {
         return $http.get(_endpointUrl + '/' + id).then(function (response) {
-            return mapResponse(response.data);
+            return _mapResponse(response.data);
         });
     };
 
+
+    /**
+     * This method makes a GET the url available via #getEndpointUrl with the addition of the provided id at the end + the
+     * 'info' request parameter.
+     * @param id the id which will be appended as '/:id' to the url
+     * @return {*} a promise wrapping the data retrieved from the backend
+     */
     this.info = function (id) {
         return $http.get(_endpointUrl + '/' + id + '?info').then(function (response) {
             return response.data;
         });
     };
 
+
+    /**
+     * This method is either makes a PUT or POST request to the backend depending on wheter or not the given object
+     * has an 'id' attribute.
+     * For PUT requests the url resolves to #getEndpointUrl + /:id, for POST requests it is just the #getEndpointUrl
+     * @param {object} object the object which should be sent to the sever. it is stripped of all child endpoints before
+     * it is sent.
+     * @return {object} a promise wrapping a new instance of the configured model initialized with the data retrieved
+     * from the backend
+     */
     this.save = function (object) {
         if (!!object.id) {
-            return $http.put(_endpointUrl + '/' + object.id, removeEndpoints(object)).then(function (response) {
-                return mapResponse(response.data);
+            return $http.put(_endpointUrl + '/' + object.id, _removeEndpoints(object)).then(function (response) {
+                return _mapResponse(response.data);
             });
         } else {
-            return $http.post(_endpointUrl, removeEndpoints(object)).then(function (response) {
-                return mapResponse(response.data);
+            return $http.post(_endpointUrl, _removeEndpoints(object)).then(function (response) {
+                return _mapResponse(response.data);
             });
         }
     };
 
+    /**
+     *
+     * @param id
+     * @return {object}
+     */
     this.remove = function (id) {
         return $http({method: 'DELETE', url: _endpointUrl + '/' + id});
     };
 }
 
+/**
+ * @description
+ * An 'EndpointConfig' basically is a wrapper around the configuration for an api endpoint during the configuration
+ * phase which is later used to instantiate the actual CatApiEndpoints. It exposes its name, the configuration itself,
+ * as well as a map of all its children and helper function to create or receive child endpoint configurations.
+ *
+ * @param {string} name the name of the endpoint
+ * @param {object} config the api endpoint configuration which basically wraps an 'url' and a 'model' attribute.
+ * If a 'children' attribute is present as well it will be used to create the appropriate child endpoints automatically,
+ * without the need to call the #child method manually - this works to arbitrary deps.
+ * @constructor
+ */
 function EndpointConfig(name, config) {
     var that = this;
     this.config = config || {};
     this.children = {};
     this.name = name;
 
+    /**
+     * This method method either returns or creates and returns a child api endpoint of the current one.
+     *
+     * @param {string} childName the name of the child endpoint
+     * @param {object} [childConfig] if given a new EndpointConfig will be created as a child of the current one. The
+     * parent property of the created config will point to the current config
+     * @return {EndpointConfig} the child endpoint config with the given name
+     */
     this.child = function (childName, childConfig) {
         if (!_.isUndefined(childConfig)) {
             this.children[childName] = new EndpointConfig(childName, childConfig);
@@ -1318,33 +1429,163 @@ function EndpointConfig(name, config) {
     }
 }
 
-// this is saved outside so that both $api and catApiService use the same config
+// this is saved outside so that both $api and catApiService use the same config - will be moved back inside
+// CatApiServiceProvider in a future release
 var _endpoints = {};
 
+/**
+ * @ngdoc service
+ * @description
+ *
+ * The CatApiServiceProvider exposes a single configuration method 'endpoint' which can be used to create or retrieve
+ * named endpoint configurations.
+ *
+ * @constructor
+ */
 function CatApiServiceProvider() {
     var _urlPrefix = '/api/';
 
-    this.endpoint = function (path, settings) {
+    /**
+     * This method is used to either create or retrieve named endpoint configurations.
+     * @param {string} name the name of the api endpoint to create or retrieve the configuration for
+     * @param {object} [settings] if given a new {EndpointConfig} will be created with the given settings
+     * @return {EndpointConfig} the endpoint config for the given name
+     */
+    this.endpoint = function (name, settings) {
         if (!_.isUndefined(settings)) {
-            _endpoints[path] = new EndpointConfig(path, settings);
+            _endpoints[name] = new EndpointConfig(name, settings);
         }
-        return _endpoints[path];
+        return _endpoints[name];
     };
 
-    this.$get = ['$http', function ($http) {
-        var catApiService = {};
 
-        _.forEach(_.keys(_endpoints), function (path) {
-            catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http);
-        });
+    this.$get = ['$http',
+        /**
+         * @return {object} returns a map from names to CatApiEndpoints
+         */
+            function $getCatApiService($http) {
+            var catApiService = {};
 
-        return catApiService;
-    }];
+            _.forEach(_.keys(_endpoints), function (path) {
+                catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http);
+            });
+
+            return catApiService;
+        }];
 }
 angular.module('cat.service.api').provider('catApiService', CatApiServiceProvider);
 // $api is deprecated, will be removed in a future release
 angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
 
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+
+/**
+ * @ngdoc service
+ * @description
+ *
+ * This service is a simple wrapper around a list of Objects.
+ * It provides some convenience methods for manipulating the list.
+ * It's main purpose is to make breadcrumb handling less cumbersome.
+ *
+ * @constructor
+ */
+function CatBreadcrumbsService() {
+    var _bc = [];
+    var that = this;
+
+    this.clear = function () {
+        _bc = [];
+    };
+
+    this.set = function (bc) {
+        _bc = bc;
+    };
+
+    this.get = function () {
+        return _bc;
+    };
+
+    this.addFirst = function (entry) {
+        _bc.unshift(entry);
+    };
+
+    this.push = function (entry) {
+        _bc.push(entry);
+    };
+
+    this.pop = function () {
+        _bc.pop();
+    };
+
+    this.length = function () {
+        return _bc.length;
+    };
+
+    function capitalize(string) {
+        return string.charAt(0).toUpperCase() + string.substring(1);
+    }
+
+    this.replaceLast = function (newVal) {
+        _bc[_bc.length - 1] = newVal;
+    };
+
+    function splitShiftAndJoin(path, amount) {
+        return _.initial(path.split('/'), amount).join('/');
+    }
+
+    /**
+     * This method auto-generates the breadcrumbs from a given view configuration
+     * @param {Object} config a config object as provided to CatBaseDetailController
+     * @return {Array} an array which represents the 'ui stack' of directly related parents
+     */
+    this.generateFromConfig = function (config) {
+        that.clear();
+        var uiStack = [];
+        if (!_.isUndefined(config.endpoint.parentEndpoint)) {
+            var currentEndpoint = config.endpoint;
+            var parentEndpoint = currentEndpoint.parentEndpoint;
+            var parentUrl = config.baseUrl;
+            var count = 0;
+
+            while (!_.isUndefined(parentEndpoint)) {
+                var parent = config.parents[count++];
+                parentUrl = splitShiftAndJoin(parentUrl, 1);
+
+                var detailBreadcrumb = {
+                    url: '#' + parentUrl + '?tab=' + window.cat.util.pluralize(currentEndpoint.getEndpointName()),
+                    title: parent.name
+                };
+                uiStack.unshift(detailBreadcrumb);
+                that.addFirst(detailBreadcrumb);
+
+                parentUrl = splitShiftAndJoin(parentUrl, 1);
+                var breadcrumb = {
+                    title: capitalize(window.cat.util.pluralize(parentEndpoint.getEndpointName())),
+                    url: '#' + parentUrl
+                };
+                that.addFirst(breadcrumb);
+
+                currentEndpoint = parentEndpoint;
+                parentEndpoint = currentEndpoint.parentEndpoint;
+            }
+        } else {
+            that.push({
+                title: capitalize(window.cat.util.pluralize(config.endpoint.getEndpointName())),
+                url: '#' + config.baseUrl
+            });
+        }
+        return uiStack;
+    };
+}
+
+angular.module('cat.service').service('catBreadcrumbsService', CatBreadcrumbsService);
+
+// TODO remove in future release
+angular.module('cat.service').service('$breadcrumbs', CatBreadcrumbsService);
 })(window, document);
 
 (function(window, document, undefined) {
@@ -1408,14 +1649,31 @@ angular.module('cat.service')
 
 
 
+/**
+ * @ngdoc service
+ * @description
+ * This service provider delegates to the $routeProvider and actually creates 2 separate routes after applying various
+ * conventions / defaults
+ *
+ * @param $routeProvider
+ * @constructor
+ */
 function CatRouteServiceProvider($routeProvider) {
     var viewNames = [];
 
+    /**
+     * This function creates route urls via convention from the given parameters and passes them (together with the
+     * configuration) to the $routeProvider. The actual route configuration is received by passing the given one
+     * to #window.cat.util.route.list and #window.cat.util.route.detail
+     * @param {string} baseUrl the base url which will be prepended to all routes
+     * @param {string} name the name for which the routes will be created
+     * @param {Object} [config] the config object which wraps the configurations for the list and detail route
+     */
     this.listAndDetailRoute = function (baseUrl, name, config) {
         viewNames.push(name);
 
 
-        var listUrl = baseUrl + '/' + name.toLowerCase() + 's';
+        var listUrl = baseUrl + '/' + window.cat.util.pluralize(name.toLowerCase());
 
         if (!!config && config.url) {
             listUrl = baseUrl + '/' + config.url || listUrl;
@@ -1432,7 +1690,11 @@ function CatRouteServiceProvider($routeProvider) {
             .when(listUrl + '/:id', window.cat.util.route.detail(_.assign({}, nameConf, detailsConfig)));
     };
 
-
+    /**
+     * This service simply exposes the created view and endpoint names, as the provider basically only delegates
+     * to the $routeProvider
+     * @return {Array} the registered view names
+     */
     this.$get = function () {
         return viewNames;
     };
@@ -1478,7 +1740,11 @@ function CatSelectConfigServiceProvider() {
     var configs = {};
 
     this.config = function (name, config) {
-        configs[name] = config;
+        if (!_.isUndefined(config)) {
+            configs[name] = config;
+        }
+
+        return configs[name];
     };
 
     this.$get = function () {
@@ -1498,13 +1764,31 @@ angular.module('cat.service').provider('catSelectConfigService', CatSelectConfig
 
 
 
+/**
+ * @ngdoc service
+ * @description
+ * This service provider can be used to initialize an api endpoint and the according detail and list routes by simply
+ * providing a name and a config object.
+ *
+ * @param {CatRouteServiceProvider} catRouteServiceProvider
+ * @param {CatApiServiceProvider} catApiServiceProvider
+ * @constructor
+ */
 function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) {
     var viewNames = [];
     var endpointNames = [];
 
+    /**
+     * This function registers a new api endpoint with catApiServiceProvider and a list and detail route with
+     * catRouteServiceProvider
+     * @param {string} baseUrl the base url which will be prepended to all generated route pats
+     * @param {string} name the name used as entry point to all routes and endpoint creations (camel cased)
+     * @param {object} [config] the config object which can in turn hold objects used for configuration of the endpoint,
+     * detail route or list route
+     */
     this.listAndDetailView = function (baseUrl, name, config) {
         var endpointName = name.toLowerCase();
-        var url = endpointName + 's';
+        var url = window.cat.util.pluralize(endpointName);
 
         if (!!config) {
             url = config.url || url;
@@ -1529,7 +1813,11 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
         catRouteServiceProvider.listAndDetailRoute(baseUrl, name, config);
     };
 
-
+    /**
+     * This service simply exposes the created view and endpoint names, as the provider basically only delegates
+     * to other service providers
+     * @return {{views: Array, endpoints: Array}}
+     */
     this.$get = function () {
         return {
             views: viewNames,
@@ -1922,6 +2210,33 @@ angular.module('cat.service').service('$globalMessages', function CatGlobalMessa
 (function(window, document, undefined) {
 'use strict';
 /**
+ * Created by tscheinecker on 26.08.2014.
+ */
+
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
  * Created by tscheinecker on 01.08.2014.
  */
 
@@ -1931,6 +2246,11 @@ window.cat.util = window.cat.util || {};
 
 window.cat.models = window.cat.models || {};
 
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
 window.cat.util.defaultModelResolver = function (name) {
     return window.cat.models[name];
 };
@@ -1942,26 +2262,88 @@ var toLowerCaseName = function (name) {
     return name.toLowerCase();
 };
 
+/**
+ * Helper function to extract the base url from the current route and the parent endpoints
+ * @param $route The angular $route service
+ * @param {string} [baseUrl]
+ * @param {array} [parentEndpointNames]
+ * @return {string} the extracted baseUrl which is either the provided one, or one, generated from the parentEndpointNames
+ */
+var getBaseUrl = function ($route, baseUrl, parentEndpointNames) {
+    if (_.isUndefined(baseUrl)) {
+        baseUrl = $route.current.originalPath;
+        if (_.keys($route.current.pathParams).length !== 0) {
+            baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
+        }
+        if (_.isArray(parentEndpointNames)) {
+            _.forEach(parentEndpointNames, function (parentEndpointName) {
+                var idName = parentEndpointName + 'Id';
+                baseUrl = baseUrl.replace(':' + idName, $route.current.params[idName]);
+            });
+        }
+    }
+
+    return baseUrl;
+};
 
 /**
- * Helper function for list routes
- * @param config
- * @returns {{templateUrl: string, controller: string, reloadOnSearch: boolean, resolve: {listData: *[]}}}
+ * A helper function for list routes which applies a few optimizations and some auto configuration.
+ * In the current state it handles 4 settings:
+ * * templateUrl - Auto-generation of the correct templateUrl based on conventions and the config.name property
+ * * controller - Auto-generation of the correct controller based on conventions and the config.name property
+ * * reloadOnSearch - this property is set to false
+ * * resolve - a object with a 'listData' property is returned which is resolved via the correct endpoint
+ *
+ * @param {Object} config the route config object which will be used to generate the actual route configuration
+ * @return {{reloadOnSearch: boolean, controller: string, templateUrl: (string), resolve: {config: Object}}}
  */
 var listRoute = function (config) {
     var name = toLowerCaseName(config.name);
+
+    function getListDataPromise(catListDataLoadingService) {
+        return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
+    }
+
+    function getResolvedConfig($q, $route, catListDataLoadingService) {
+        var deferredConfig = $q.defer();
+        var resolvedConfig = {
+            controller: config.controller || config.name + 'Controller',
+            baseUrl: getBaseUrl($route, config.baseUrl),
+            title: window.cat.util.pluralize(config.name),
+            searchProps: config.searchProps || window.cat.util.defaultListSearchProps,
+            listTemplateUrl: config.listTemplateUrl || (name + '/' + name + '-list.tpl.html')
+        };
+
+        getListDataPromise(catListDataLoadingService).then(
+            function (listData) {
+                resolvedConfig.listData = listData;
+                deferredConfig.resolve(resolvedConfig);
+            }
+        );
+
+        return deferredConfig.promise;
+    }
+
     return {
-        templateUrl: config.templateUrl || (name + '/' + name + '-list.tpl.html'),
-        controller: config.controller || config.name + 'Controller',
         reloadOnSearch: false,
+        controller: 'CatBaseListController',
+        controllerAs: 'catBaseListController',
+        templateUrl: config.templateUrl || 'template/cat-base-list.tpl.html',
         resolve: {
-            listData: ['catListDataLoadingService', function (catListDataLoadingService) {
-                return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
-            }]
+            config: getResolvedConfig
         }
     };
 };
 
+/**
+ * A helper function for detail routes which applies a few optimizations and some auto configuration.
+ * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
+ * 'template/base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
+ * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
+ * object which pre-loads all the necessary data.
+ * @param {Object} config the route config object which will be used to generate the actual route configuration
+ * @returns {{templateUrl: (string), controller: string, reloadOnSearch: (boolean), resolve: {config: (object)}}}
+ */
 var detailRoute = function (config) {
     var endpointName, parentEndpointNames;
 
@@ -2002,14 +2384,7 @@ var detailRoute = function (config) {
         };
     }
 
-    var resolvedConfig;
-
-    function getConfig(catApiService, $route) {
-        if (!_.isUndefined(resolvedConfig)) {
-            return resolvedConfig;
-        }
-
-        var currentRoute = $route.current.originalPath;
+    function getEndpoint($route, catApiService) {
         var endpoint = catApiService[endpointName];
 
         if (_.isArray(parentEndpointNames)) {
@@ -2028,21 +2403,27 @@ var detailRoute = function (config) {
             endpoint = endpoint[endpointName];
         }
 
-        var baseUrl = config.baseUrl;
+        return endpoint;
+    }
 
-        if (_.isUndefined(baseUrl)) {
-            var baseUrlTemplate = currentRoute.substring(0, currentRoute.lastIndexOf('/'));
-            if (_.isArray(parentEndpointNames)) {
-                _.forEach(parentEndpointNames, function (parentEndpointName) {
-                    var idName = parentEndpointName + 'Id';
-                    baseUrl = baseUrlTemplate.replace(':' + idName, $route.current.params[idName]);
-                });
-            } else {
-                baseUrl = baseUrlTemplate;
-            }
+    function getDetailData($route, $q, endpoint) {
+        var detailPromise;
+        var detailId = $route.current.params.id;
+        if (detailId === 'new') {
+            detailPromise = $q.when(new Model());
+        } else {
+            detailPromise = endpoint.get(detailId);
         }
+        return detailPromise;
+    }
 
-        resolvedConfig = {
+    function getConfig($route, $q, catApiService) {
+        var deferred = $q.defer();
+        var endpoint = getEndpoint($route, catApiService);
+
+        var baseUrl = getBaseUrl($route, config.baseUrl, parentEndpointNames);
+
+        var resolvedConfig = {
             controller: config.controller || config.name + 'DetailsController',
             endpoint: endpoint,
             Model: Model,
@@ -2050,7 +2431,27 @@ var detailRoute = function (config) {
             baseUrl: baseUrl
         };
 
-        return resolvedConfig;
+
+        var detailPromise = getDetailData($route, $q, endpoint);
+        detailPromise.then(function (data) {
+            resolvedConfig.detail = data;
+        });
+
+        var parentsPromise = getParentInfo($q, endpoint);
+        parentsPromise.then(function (parents) {
+            resolvedConfig.parents = parents;
+        });
+
+        $q.all([detailPromise, parentsPromise]).then(
+            function () {
+                deferred.resolve(resolvedConfig);
+            },
+            function (reason) {
+                deferred.reject(reason);
+            }
+        );
+
+        return deferred.promise;
     }
 
     function getParentInfo($q, endpoint) {
@@ -2084,24 +2485,9 @@ var detailRoute = function (config) {
         controller: 'CatBaseDetailController',
         reloadOnSearch: config.reloadOnSearch,
         resolve: {
-            config: function (catApiService, $route) {
-                return getConfig(catApiService, $route);
-            },
-            parents: ['catApiService', '$route', '$q', function (catApiService, $route, $q) {
-                if (_.isUndefined(parentEndpointNames)) {
-                    return null;
-                }
-
-                return getParentInfo($q, getConfig(catApiService, $route).endpoint);
-            }],
-            detail: ['catApiService', '$route', function (catApiService, $route) {
-                var detailId = $route.current.params.id;
-                if (detailId === 'new') {
-                    return new Model();
-                }
-
-                return getConfig(catApiService, $route).endpoint.get(detailId);
-            }]
+            config: function ($route, $q, catApiService) {
+                return getConfig($route, $q, catApiService);
+            }
         }
     };
 };
