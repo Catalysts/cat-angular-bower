@@ -22,28 +22,56 @@ try {
   module = angular.module('cat', []);
 }
 module.run(['$templateCache', function($templateCache) {
-  $templateCache.put('template/base-detail.tpl.html',
+  $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
+    '<tabset>\n' +
+    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
+    '        <tab-heading>\n' +
+    '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> {{getTabName(tab.name)}}\n' +
+    '        </tab-heading>\n' +
+    '        <div ng-include="getTabTemplate(tab.name)" ng-controller="tabController"></div>\n' +
+    '    </tab>\n' +
+    '</tabset>\n' +
+    '\n' +
+    '');
+}]);
+})();
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+(function(module) {
+try {
+  module = angular.module('cat');
+} catch (e) {
+  module = angular.module('cat', []);
+}
+module.run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/cat-base-detail.tpl.html',
     '<div ng-repeat="parent in uiStack" class="alert alert-info"><a ng-href="{{parent.url}}">\n' +
-    '     {{parent.title}}\n' +
-    '</a> </div>\n' +
+    '    {{parent.title}}\n' +
+    '</a></div>\n' +
     '\n' +
     '<div class="panel panel-default">\n' +
     '    <div class="panel-heading">\n' +
     '        <div class="pull-right edit-buttons" ng-if="!editDetail && !!editTemplate">\n' +
     '            <div class="btn-group">\n' +
     '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"><span\n' +
-    '                        class="glyphicon glyphicon-trash"></span> Delete\n' +
+    '                        class="glyphicon glyphicon-trash"></span>\n' +
+    '                    <span cat-i18n="cc.catalysts.general.delete">Delete</span>\n' +
     '                </button>\n' +
     '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
-    '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span> Edit\n' +
+    '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span>\n' +
+    '                    <span cat-i18n="cc.catalysts.general.edit">Edit</span>\n' +
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
     '            <a ng-href="#{{baseUrl}}/new" class="btn btn-xs btn-default" cat-activate-on-shortcut="alt+n"><span\n' +
-    '                    class="glyphicon glyphicon-plus"></span> New</a>\n' +
+    '                    class="glyphicon glyphicon-plus"></span>\n' +
+    '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
     '        <h5 ng-if="exists">{{title()}}</h5>\n' +
-    '        <h5 ng-if="!exists">New</h5>\n' +
+    '        <h5 ng-if="!exists" cat-i18n="cc.catalysts.general.new">New</h5>\n' +
     '    </div>\n' +
     '    <!-- create form element if editing -->\n' +
     '    <div class="panel-body">\n' +
@@ -56,15 +84,17 @@ module.run(['$templateCache', function($templateCache) {
     '    </div>\n' +
     '    <div class="panel-footer text-right" ng-if="!!editDetail">\n' +
     '        <button type="button" class="btn btn-xs btn-default" ng-click="cancelEdit()"\n' +
-    '                cat-activate-on-shortcut="alt+esc"><span class="glyphicon glyphicon-remove"></span> Cancel\n' +
+    '                cat-activate-on-shortcut="alt+esc"><span class="glyphicon glyphicon-remove"></span>\n' +
+    '            <span cat-i18n="cc.catalysts.general.cancel">Cancel</span>\n' +
     '        </button>\n' +
     '        <button type="submit" class="btn btn-xs btn-primary" ng-click="save()"\n' +
     '                ng-disabled="form.$pristine"><span class="glyphicon glyphicon-floppy-disk"></span>\n' +
-    '            Save\n' +
+    '            <span cat-i18n="cc.catalysts.general.save">Save</span>\n' +
     '        </button>\n' +
     '    </div>\n' +
     '</div>\n' +
-    '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"></div>');
+    '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
+    '     ng-controller="baseTabsController"></div>');
 }]);
 })();
 
@@ -81,9 +111,9 @@ try {
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-list.tpl.html',
     '<h2>\n' +
-    '    {{catBaseListController.title}}\n' +
+    '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
     '    <a ng-href="{{catBaseListController.getUrlForNewPage()}}" class="btn btn-primary pull-right">\n' +
-    '        <span class="glyphicon glyphicon-plus"></span> New\n' +
+    '        <span class="glyphicon glyphicon-plus"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
     '    </a>\n' +
     '</h2>\n' +
     '\n' +
@@ -106,24 +136,19 @@ try {
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-facets.tpl.html',
-    '<div class="sidebar">\n' +
-    '    <ul class="nav sidenav">\n' +
-    '        <li ng-repeat="facet in listData.facets">\n' +
-    '            <h4>{{facetName(facet)}}\n' +
-    '                <small ng-if="!isActive(facet)">\n' +
-    '                    <a ng-click="showAll(facet)" href="">See all</a>\n' +
-    '                </small>\n' +
-    '            </h4>\n' +
-    '            <ul class="nav">\n' +
-    '                <li ng-repeat="term in facet.terms" cat-load-more="5">\n' +
-    '                    <a href="" ng-click="setActive(facet,term)">{{term.name}}\n' +
-    '                        <span class="text-muted">({{term.count}})</span>\n' +
-    '                    </a>\n' +
-    '                </li>\n' +
-    '            </ul>\n' +
+    '<div>\n' +
+    '    <ul class="nav">\n' +
+    '        <li ng-repeat="facet in listData.facets" ng-if="listData.facets" ng-init="initFacets()">\n' +
+    '            <label cat-i18n="{{\'cc.catalysts.cat-facets.facet.\'+facet.name}}" i18n-params="{facet: facet}">{{facetName(facet)}}</label>\n' +
+    '            <select class="form-control" ui-select2="facetSelectOptions" ng-model="facets[facet.name]"\n' +
+    '                    ng-change="facetChanged(facet)">\n' +
+    '                <option></option>\n' +
+    '                <option ng-repeat="term in facet.terms" value="{{term.id}}">{{term.name}} ({{term.count}})\n' +
+    '                </option>\n' +
+    '            </select>\n' +
+    '            <br>\n' +
     '        </li>\n' +
     '    </ul>\n' +
-    '\n' +
     '</div>');
 }]);
 })();
@@ -163,16 +188,24 @@ module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
     '<ul class="nav navbar-nav">\n' +
     '    <li class="dropdown" ng-repeat="menu in menus">\n' +
-    '        <a href="" class="dropdown-toggle" data-toggle="dropdown" ng-if="isVisible(menu)">{{menu.getOptions().name}}<b\n' +
-    '                class="caret"></b></a>\n' +
+    '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)">\n' +
+    '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span> <b\n' +
+    '                class="caret"></b>\n' +
+    '        </a>\n' +
     '        <ul class="dropdown-menu" ng-if="isVisible(menu)">\n' +
     '            <li ng-repeat="entry in menu.getFlattened() track by entry.id" ng-if="isVisible(entry)"\n' +
     '                ng-class="{\'dropdown-header\': entry.isGroup()}"\n' +
     '                ng-switch data-on="entry.isGroup()">\n' +
     '                <a ng-href="#{{entry.getOptions().path}}" ng-switch-when="false">\n' +
-    '                    {{entry.getOptions().name}} <span ng-if="entry.getOptions().keymap" class="text-muted">{{entry.getOptions().keymap}}</span>\n' +
+    '                    <span cat-i18n="cc.catalysts.cat-menu.entry.{{entry.completeId}}">\n' +
+    '                        {{entry.getOptions().name}}\n' +
+    '                    </span> <span ng-if="entry.getOptions().keymap"\n' +
+    '                                  class="text-muted">{{entry.getOptions().keymap}}</span>\n' +
     '                </a>\n' +
-    '                <span ng-switch-default>{{entry.getOptions().name}}</span>\n' +
+    '                <span ng-switch-default\n' +
+    '                      cat-i18n="cc.catalysts.cat-menu.group.{{entry.completeId}}">\n' +
+    '                    {{entry.getOptions().name}}\n' +
+    '                </span>\n' +
     '            </li>\n' +
     '        </ul>\n' +
     '    </li>\n' +
@@ -195,26 +228,39 @@ module.run(['$templateCache', function($templateCache) {
     '<div ng-cloak>\n' +
     '    <div ng-if="searchProps" class="row search">\n' +
     '        <div class="col-sm-3 pull-right" ng-repeat="prop in searchProps">\n' +
-    '            <input class="form-control" placeholder="Search by {{prop}}" ng-model="listData.search[prop]">\n' +
+    '            <input class="form-control" placeholder="{{searchPropertyPlaceholders[prop]}}"\n' +
+    '                   ng-model="listData.search[prop]">\n' +
     '        </div>\n' +
     '    </div>\n' +
     '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
-    '    <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
-    '                    page="listData.pagination.page" max-size="10"\n' +
-    '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
+    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '                    ng-model="listData.pagination.page" max-size="10"\n' +
+    '                    class="pagination-sm" boundary-links="true" rotate="false"\n' +
+    '                    previous-text="{{paginationText.previous}}"\n' +
+    '                    next-text="{{paginationText.next}}"\n' +
+    '                    first-text="{{paginationText.first}}"\n' +
+    '                    last-text="{{paginationText.last}}">\n' +
     '    </div>\n' +
     '    <div class="text-center">\n' +
-    '    <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0">\n' +
+    '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0"\n' +
+    '             cat-i18n="cc.catalysts.cat-paginated.itemsFound" i18n-watch-params="true"\n' +
+    '             i18n-params="{count: listData.count, firstResult: listData.firstResult, lastResult:listData.lastResult}">\n' +
     '            {{listData.count}} Einträge gefunden. Einträge {{listData.firstResult}}-{{listData.lastResult}}\n' +
     '        </div>\n' +
     '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count === 0">\n' +
-    '        Keine Einträge gefunden\n' +
+    '            <span cat-i18n="cc.catalysts.cat-paginated.noItemsFound">Keine Einträge gefunden</span>\n' +
     '        </div>\n' +
     '    </div>\n' +
     '    <div ng-transclude ng-show="listData.count !== 0"></div>\n' +
-    '    <div class="text-center" ng-if="!listData.isSinglePageList && istData.count !== 0">\n' +
-    '    <pagination total-items="listData.count" items-per-page="listData.pagination.size" page="listData.pagination.page" max-size="10"\n' +
-    '                    class="pagination-sm" boundary-links="true" rotate="false"></pagination>\n' +
+    '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
+    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '                    ng-model="listData.pagination.page" max-size="10"\n' +
+    '                    class="pagination-sm" boundary-links="true" rotate="false"\n' +
+    '                    previous-text="{{paginationText.previous}}"\n' +
+    '                    next-text="{{paginationText.next}}"\n' +
+    '                    first-text="{{paginationText.first}}"\n' +
+    '                    last-text="{{paginationText.last}}">\n' +
+    '        </pagination>\n' +
     '    </div>\n' +
     '</div>\n' +
     '');

@@ -17,11 +17,20 @@
 'use strict';
 window.cat = {};
 
-angular.module('cat.directives', ['ui.select2']);
-angular.module('cat.controller', []);
-angular.module('cat.template', []);
+angular.module('cat.controller.base.list', []);
+angular.module('cat.controller.base.tabs', []);
+angular.module('cat.controller.base.detail', ['cat.controller.base.tabs']);
+angular.module('cat.controller', ['cat.controller.base.detail', 'cat.controller.base.list']);
+
+angular.module('cat.template', ['ui.bootstrap.tpls']);
+
 angular.module('cat.service.api', []);
-angular.module('cat.service', ['angularSpinner', 'ngRoute', 'cat.service.api']);
+angular.module('cat.service.i18n', []);
+angular.module('cat.service', ['angularSpinner', 'ngRoute', 'cat.service.api', 'cat.service.i18n']);
+
+angular.module('cat.directives.i18n', ['cat.service.i18n']);
+angular.module('cat.directives', ['cat.directives.i18n', 'ui.select2', 'ui.bootstrap.pagination']);
+
 angular.module('cat', [
     'cat.service',
     'cat.template',
@@ -272,9 +281,14 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
 
     $scope.uiStack = catBreadcrumbsService.generateFromConfig(config);
 
-    catBreadcrumbsService.push({
-        title: $routeParams.id === 'new' ? 'New' : ''
-    });
+    if ($routeParams.id === 'new') {
+        catBreadcrumbsService.push({
+            title: 'New',
+            key: 'cc.catalysts.general.new'
+        });
+    } else {
+        catBreadcrumbsService.push({});
+    }
 
     $scope.editTemplate = templateUrls.edit;
 
@@ -364,7 +378,7 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
             } else {
                 var parentUrl = $scope.uiStack[$scope.uiStack.length - 1].url;
                 $location.path(parentUrl.substring(1, parentUrl.indexOf('?')));
-                $location.search('tab', window.cat.util.pluralize(endpoint.getEndpointName()));
+                $location.search('tab', endpoint.getEndpointName());
             }
         });
     };
@@ -419,15 +433,28 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
     }
 
 
+    // TABS
+    $scope.baseTabsController = ['$scope', function ($tabsScope) {
+        $controller('CatBaseTabsController', {
+            $scope: $tabsScope,
+            config: config
+        });
+    }];
+
     try {
         // extend with custom controller
-        $controller(config.controller, {$scope: $scope, detail: config.detail, parents: config.parents, config: config});
+        $controller(config.controller, {
+            $scope: $scope,
+            detail: config.detail,
+            parents: config.parents,
+            config: config
+        });
     } catch (unused) {
         $log.info('Couldn\'t instantiate controller with name ' + config.controller);
     }
 }
 
-angular.module('cat').controller('CatBaseDetailController', CatBaseDetailController);
+angular.module('cat.controller.base.detail').controller('CatBaseDetailController', CatBaseDetailController);
 })(window, document);
 
 (function(window, document, undefined) {
@@ -436,6 +463,8 @@ angular.module('cat').controller('CatBaseDetailController', CatBaseDetailControl
 
 /**
  * @ngdoc function
+ * @name CatBaseListController
+ * @controller
  *
  * @description
  * The CatBaseListController takes care of providing several common properties to the scope
@@ -457,14 +486,20 @@ angular.module('cat').controller('CatBaseDetailController', CatBaseDetailControl
  * @constructor
  */
 function CatBaseListController($scope, $controller, $log, catBreadcrumbsService, config) {
+    if (!_.isUndefined(config.listData)) {
+        this.titleKey = 'cc.catalysts.cat-breadcrumbs.entry.' + config.listData.endpoint.getEndpointName();
 
-    catBreadcrumbsService.set([
-        {
-            title: config.title
-        }
-    ]);
+        catBreadcrumbsService.set([
+            {
+                title: config.title,
+                key: this.titleKey
+            }
+        ]);
 
-    $scope.listData = config.listData;
+        $scope.listData = config.listData;
+    } else {
+        $log.warn('No listData available!');
+    }
 
     this.title = config.title;
     this.searchProps = config.searchProps;
@@ -487,8 +522,126 @@ function CatBaseListController($scope, $controller, $log, catBreadcrumbsService,
     }
 }
 
-angular.module('cat').controller('CatBaseListController', CatBaseListController);
+angular.module('cat.controller.base.list')
+    .controller('CatBaseListController',
+    ['$scope', '$controller', '$log', 'catBreadcrumbsService', 'config', CatBaseListController]);
 
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+
+
+function CatBaseTabsController($scope, $controller, $routeParams, $location, config) {
+    var endpoint = config.endpoint;
+
+    $scope.tabs = config.tabs;
+    $scope.tabNames = _.map(config.tabs, 'name');
+    $scope.activeTab = {};
+
+    $scope.activateTab = function (tab) {
+        $scope.$broadcast('tab-' + tab + '-active');
+        _.forEach($scope.tabs, function (currentTab) {
+            $scope.activeTab[currentTab.name] = false;
+        });
+        $scope.activeTab[tab] = true;
+    };
+
+    $scope.selectTab = function (tabName) {
+        $location.search('tab', tabName);
+    };
+
+    var isTabActive = function (tab) {
+        return $routeParams.tab === tab.name;
+    };
+
+    $scope.$watchCollection(function () {
+        return $location.search();
+    }, function (newValue) {
+        if (_.isString(newValue.tab)) {
+            $scope.activateTab(newValue.tab);
+        }
+    });
+
+    $scope.getTabName = function (tab) {
+        return window.cat.util.pluralize(window.cat.util.capitalize(tab));
+    };
+
+    _.forEach($scope.tabs, function (tab) {
+        $scope.activeTab[tab.name] = isTabActive(tab);
+    });
+
+    // TODO replace by url resolver service as soon as it is available
+    var parentUrl = endpoint.getEndpointName();
+    var parentTemplateNamePrefix = endpoint.getEndpointName();
+
+    var currentEndpoint = endpoint;
+
+    while (!_.isUndefined(currentEndpoint.parentEndpoint)) {
+        currentEndpoint = endpoint.parentEndpoint;
+        var parentEndpointName = currentEndpoint.getEndpointName();
+
+        parentUrl = parentEndpointName + '/' + parentUrl;
+
+        parentTemplateNamePrefix = parentEndpointName + '-' + parentTemplateNamePrefix;
+    }
+
+    $scope.getTabTemplate = function (tab) {
+        return parentUrl + '/' + tab + '/' + parentTemplateNamePrefix + '-' + tab + '-list.tpl.html';
+    };
+
+    var _getDefaultTabControllerName = function (tab) {
+        return window.cat.util.capitalize(endpoint.getEndpointName()) + window.cat.util.capitalize(tab.name) + 'Controller';
+    };
+
+    var _getTabControllerName = function (tab) {
+        if (!!tab.controller) {
+            return tab.controller;
+        }
+
+        return _getDefaultTabControllerName(tab);
+    };
+
+    var tabIndex = 0;
+
+    $scope.tabController = ['$scope', 'catListDataLoadingService', function ($tabScope, catListDataLoadingService) {
+        var activeTab = $scope.tabs[tabIndex++];
+        var tabControllerName = _getTabControllerName(activeTab);
+
+        $tabScope.getSearchRequest = function () {
+            return new window.cat.SearchRequest();
+        };
+
+        $tabScope.getEndpoint = function () {
+            return config.detail[activeTab.name];
+        };
+
+        $tabScope.loadListData = function () {
+            catListDataLoadingService.load($tabScope.getEndpoint(), $tabScope.getSearchRequest()).then(function (data) {
+                $tabScope.listData = data;
+            });
+        };
+
+        $tabScope.$on('tab-' + activeTab.name + '-active', function () {
+            if (_.isUndefined($scope.listData)) {
+                $tabScope.loadListData();
+            }
+        });
+
+        $controller(tabControllerName, {
+            $scope: $tabScope,
+            detail: config.detail,
+            parents: config.parents,
+            config: config
+        });
+
+        if ($scope.activeTab[activeTab.name] === true) {
+            $scope.activateTab(activeTab.name);
+        }
+    }];
+}
+
+angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
 })(window, document);
 
 (function(window, document, undefined) {
@@ -583,26 +736,22 @@ angular.module('cat')
                 listData: '=?',
                 names: '='
             },
+            require: '^catPaginated',
             templateUrl: 'template/cat-facets.tpl.html',
-            link: function CatFacetsLink(scope) {
+            link: function CatFacetsLink(scope, element, attrs, catPaginatedController) {
                 _initDefaults(scope);
                 _checkConditions(scope);
+
+                scope.catPaginatedController = catPaginatedController;
             },
             controller: function CatFacetsController($scope) {
+                $scope.isActive = function (facet) {
+                    return !!$scope.catPaginatedController.getSearch()[facet.name];
+                };
 
                 function _search(search) {
-                    return $scope.listData.searchRequest.search(search);
+                    return $scope.catPaginatedController.getSearchRequest().search(search);
                 }
-
-                $scope.isActive = function (facet) {
-                    return !_search()[facet.name];
-                };
-
-                $scope.showAll = function (facet) {
-                    var search = _search();
-                    delete search[facet.name];
-                    _search(search);
-                };
 
                 $scope.facetName = function (facet) {
                     if ($scope.names !== undefined && $scope.names[facet.name] !== undefined) {
@@ -612,11 +761,28 @@ angular.module('cat')
                     }
                 };
 
-                $scope.setActive = function (facet, term) {
-                    facet.activeTerm = term;
+                $scope.facets = {};
+
+                $scope.facetChanged = function (facet) {
                     var search = _search();
-                    search[facet.name] = term.id;
-                    _search(search);
+                    var value = $scope.facets[facet.name];
+                    if (!!value) {
+                        search[facet.name] = value;
+                    } else {
+                        delete search[facet.name];
+                    }
+                };
+
+                $scope.initFacets = function () {
+                    _.forEach($scope.listData.facets, function (facet) {
+                        if ($scope.isActive(facet)) {
+                            $scope.facets[facet.name] = $scope.catPaginatedController.getSearch()[facet.name];
+                        }
+                    });
+                };
+
+                $scope.facetSelectOptions = {
+                    allowClear: true
                 };
             }
         };
@@ -643,6 +809,54 @@ angular.module('cat')
             template: '<div class="label label-danger" ng-if="errors[name]"><ul><li ng-repeat="error in errors[name]">{{error}}</li></ul></div>'
         };
     });
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 21.10.2014.
+ */
+
+angular.module('cat.directives.i18n')
+    .directive('catI18n', ['$log', '$rootScope', 'catI18nService', function CatI18nDirective($log, $rootScope, catI18nService) {
+        function _translate(scope, element) {
+            if (!scope.key) {
+                $log.warn('No key was given for cat-i18n!');
+                return;
+            }
+            catI18nService.translate(scope.key, scope.params).then(
+                function (message) {
+                    element.text(message);
+                }, function (reason) {
+                    // TODO - introduce a handler service for this case - eg show '##missingkey: somekey##'
+                }
+            );
+        }
+
+
+        return {
+            restrict: 'A',
+            scope: {
+                key: '@catI18n',
+                params: '=?i18nParams',
+                watchParams: '=?i18nWatchParams'
+            },
+            link: function CatI18nLink(scope, element) {
+                _translate(scope, element);
+
+                if (!!scope.params && scope.watchParams === true) {
+                    scope.$watch('params', function () {
+                        _translate(scope, element);
+                    }, true);
+                }
+
+                $rootScope.$on('cat-i18n-refresh', function () {
+                    _translate(scope, element);
+                });
+            }
+        };
+    }]);
+
 })(window, document);
 
 (function(window, document, undefined) {
@@ -777,7 +991,9 @@ angular.module('cat')
 'use strict';
 
 angular.module('cat')
-    .directive('catPaginated', function CatPaginatedDirective() {
+    .directive('catPaginated', function CatPaginatedDirective($log, catI18nService) {
+        var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
+
         return {
             replace: true,
             restrict: 'E',
@@ -792,10 +1008,26 @@ angular.module('cat')
                     scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
                         return !!prop;
                     });
+
+                    scope.searchPropertyPlaceholders = {};
+
+                    _.forEach(scope.searchProps, function (searchProp) {
+                        scope.searchPropertyPlaceholders[searchProp] = 'Search by ' + searchProp;
+                        catI18nService.translate(SEARCH_PROP_KEY, {prop: searchProp})
+                            .then(function (message) {
+                                scope.searchPropertyPlaceholders[searchProp] = message;
+                            });
+                    });
                 }
             },
-            controller: function CatPaginatedController($scope, $location, catListDataLoadingService, $timeout, $rootScope) {
+            controllerAs: 'catPaginatedController',
+            controller: function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService) {
+                var that = this;
                 var searchTimeout = null, DELAY_ON_SEARCH = 500;
+                var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
+                var PAGINATION_NEXT_KEY = 'cc.catalysts.cat-paginated.pagination.next';
+                var PAGINATION_FIRST_KEY = 'cc.catalysts.cat-paginated.pagination.first';
+                var PAGINATION_LAST_KEY = 'cc.catalysts.cat-paginated.pagination.last';
 
                 if (_.isUndefined($scope.listData)) {
                     $scope.listData = $scope.$parent.listData;
@@ -807,6 +1039,34 @@ angular.module('cat')
                 if (_.isUndefined($scope.syncLocation)) {
                     $scope.syncLocation = _.isUndefined($scope.$parent.detail);
                 }
+
+                $scope.paginationText = {
+                    previous: 'Previous',
+                    next: 'Next',
+                    first: 'First',
+                    last: 'Last'
+                };
+
+                function handlePaginationTextResponse(prop) {
+                    return function (message) {
+                        $scope.paginationText[prop] = message;
+                    };
+                }
+
+
+                function _loadPaginationTranslations() {
+                    catI18nService.translate(PAGINATION_PREVIOUS_KEY).then(handlePaginationTextResponse('previous'));
+                    catI18nService.translate(PAGINATION_NEXT_KEY).then(handlePaginationTextResponse('next'));
+                    catI18nService.translate(PAGINATION_FIRST_KEY).then(handlePaginationTextResponse('first'));
+                    catI18nService.translate(PAGINATION_LAST_KEY).then(handlePaginationTextResponse('last'));
+                }
+
+                _loadPaginationTranslations();
+
+                $rootScope.$on('cat-i18n-refresh', function () {
+                    _loadPaginationTranslations();
+                });
+
 
                 $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
 
@@ -870,8 +1130,16 @@ angular.module('cat')
                     reload();
                 };
 
+                this.getSearch = function () {
+                    return searchRequest.search();
+                };
+
+                this.getSearchRequest = function () {
+                    return searchRequest;
+                };
+
                 $scope.$on('SortChanged', function (event, value) {
-                    this.sort(value);
+                    that.sort(value);
                 });
             }
         };
@@ -1055,7 +1323,7 @@ angular.module('cat')
                 }
 
                 element.text('');
-                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
+                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')" cat-i18n="cc.catalysts.cat-sortable.sort.' + property + '">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
             },
             controller: function CatSortableController($scope) {
                 $scope.toggleSort = function (property) {
@@ -1158,6 +1426,42 @@ angular.module('cat')
             }
         };
     });
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 })(window, document);
 
 (function(window, document, undefined) {
@@ -1307,13 +1611,19 @@ function CatApiEndpoint(url, endpointConfig, $http) {
                     });
                 }
 
-                return {
+                var result = {
                     totalCount: response.data.totalCount,
                     facets: facets,
                     elements: _.map(response.data.elements, function (elem) {
                         return _mapResponse(elem);
                     })
                 };
+
+                delete response.data.totalCount;
+                delete response.data.elements;
+                delete response.data.facets;
+
+                return _.assign(result, response.data);
             } else {
                 return _.map(response.data, function (elem) {
                     return _mapResponse(elem);
@@ -1533,6 +1843,9 @@ angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
 
 /**
  * @ngdoc service
+ * @name catBreadcrumbService
+ * @service
+ *
  * @description
  *
  * This service is a simple wrapper around a list of Objects.
@@ -1561,12 +1874,16 @@ function CatBreadcrumbsService() {
         _bc.unshift(entry);
     };
 
+    this.removeFirst = function () {
+        return _bc.shift();
+    };
+
     this.push = function (entry) {
         _bc.push(entry);
     };
 
     this.pop = function () {
-        _bc.pop();
+        return _bc.pop();
     };
 
     this.length = function () {
@@ -1604,7 +1921,7 @@ function CatBreadcrumbsService() {
                 parentUrl = splitShiftAndJoin(parentUrl, 1);
 
                 var detailBreadcrumb = {
-                    url: '#' + parentUrl + '?tab=' + window.cat.util.pluralize(currentEndpoint.getEndpointName()),
+                    url: '#' + parentUrl + '?tab=' + currentEndpoint.getEndpointName(),
                     title: parent.name
                 };
                 uiStack.unshift(detailBreadcrumb);
@@ -1613,6 +1930,7 @@ function CatBreadcrumbsService() {
                 parentUrl = splitShiftAndJoin(parentUrl, 1);
                 var breadcrumb = {
                     title: capitalize(window.cat.util.pluralize(parentEndpoint.getEndpointName())),
+                    key: 'cc.catalysts.cat-breadcrumbs.entry.' + config.endpoint.getEndpointName(),
                     url: '#' + parentUrl
                 };
                 that.addFirst(breadcrumb);
@@ -1623,6 +1941,7 @@ function CatBreadcrumbsService() {
         } else {
             that.push({
                 title: capitalize(window.cat.util.pluralize(config.endpoint.getEndpointName())),
+                key: 'cc.catalysts.cat-breadcrumbs.entry.' + config.endpoint.getEndpointName(),
                 url: '#' + config.baseUrl
             });
         }
@@ -1638,6 +1957,273 @@ angular.module('cat.service').service('$breadcrumbs', CatBreadcrumbsService);
 
 (function(window, document, undefined) {
 'use strict';
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+function CatI18nLocaleService($q, $locale, CAT_I18N_DEFAULT_LOCALE) {
+    this.getLanguageOfLocale = function (locale) {
+        if (_.isUndefined(locale)) {
+            return undefined;
+        }
+
+        if (locale.indexOf('-') !== -1) {
+            return locale.split('-')[0];
+        }
+
+        return locale;
+    };
+
+    this.getCurrentLocale = function () {
+        return $locale.id;
+    };
+
+    this.getDefaultLocale = function () {
+        return CAT_I18N_DEFAULT_LOCALE;
+    };
+}
+
+angular.module('cat.service.i18n')
+/**
+ * @ngdoc constant
+ * @name CAT_I18N_DEFAULT_LOCALE
+ * @constant
+ *
+ * @description
+ * The default locale used for message translation
+ */
+    .constant('CAT_I18N_DEFAULT_LOCALE', 'de')
+    .service('catI18nLocaleService', ['$q', '$locale', 'CAT_I18N_DEFAULT_LOCALE', CatI18nLocaleService]);
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_LOCALE) {
+    function _getLocale(locale) {
+        return locale || catI18nLocaleService.getDefaultLocale();
+    }
+
+    function _getMessages(locale) {
+        var localeId = _getLocale(locale);
+
+        var messages = window.cat.i18n[localeId];
+        if (_.isUndefined(messages)) {
+            messages = _getMessages(catI18nLocaleService.getLanguageOfLocale(localeId));
+        }
+        if (localeId !== CAT_I18N_DEFAULT_LOCALE && _.isUndefined(messages)) {
+            messages = _getMessages(CAT_I18N_DEFAULT_LOCALE);
+        }
+
+        return messages;
+    }
+
+    /**
+     * @ngdoc method
+     * @name catI18nMessageSourceService#getMessages
+     * @function
+     *
+     * @description
+     * Function which retrieves a message bundle for a given locale
+     *
+     * @param {String} [locale] the locale in which the messages should be retrieved
+     * @returns {Promise} a promise holding the retrieved message bundle
+     */
+    this.getMessages = function (locale) {
+        return $q.when(_getMessages(locale));
+    };
+
+    /**
+     * @ngdoc method
+     * @name catI18nMessageSourceService#getMessage
+     * @function
+     *
+     * @description
+     * Function which retrieves a message for a given key and locale
+     *
+     * @param {String} key the key of the message to retrieve
+     * @param {String} [locale = CAT_I18N_DEFAULT_LOCALE] the locale in which the messages should be retrieved
+     * @returns {Promise} a promise holding the retrieved message
+     */
+    this.getMessage = function (key, locale) {
+        var bundle = _getMessages(locale);
+        if (_.isUndefined(bundle) || _.isUndefined(bundle[key])) {
+            return $q.reject('No message found for key \'' + key + '\' and the given locale \'' + _getLocale(locale) + '\'');
+        }
+        return $q.when(bundle[key]);
+    };
+
+
+    /**
+     * @ngdoc method
+     * @name catI18nMessageSourceService#hasMessage
+     * @function
+     *
+     * @description
+     * Function which checks whether or not a message for a given key and locale exists
+     *
+     * @param {String} key the key of the message to retrieve
+     * @param {String} [locale = CAT_I18N_DEFAULT_LOCALE] the locale in which the messages should be available
+     * @returns {Promise} a promise holding <code>TRUE</code> if the key can be resolved for the given locale
+     */
+    this.hasMessage = function (key, locale) {
+        var bundle = _getMessages(locale);
+        return $q.when(!_.isUndefined(bundle) && !_.isUndefined(bundle[key]));
+    };
+}
+
+angular.module('cat.service.i18n')
+/**
+ * @ngdoc service
+ * @name catI18nMessageSourceService
+ * @service
+ *
+ * @description
+ * A service to retrieve message templates for a given key and locale
+ *
+ *
+ * @param $q
+ * @param $locale
+ * @param CAT_I18N_DEFAULT_LOCALE
+ * @constructor
+ */
+    .service('catI18nMessageSourceService', ['$q', 'catI18nLocaleService', 'CAT_I18N_DEFAULT_LOCALE', CatI18nMessageSourceService]);
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
+/**
+ * Created by tscheinecker on 21.10.2014.
+ */
+
+
+function CatI18nService($q, $log, catI18nMessageSourceService, catI18nMessageParameterResolver) {
+    var that = this;
+
+    /**
+     * @ngdoc method
+     * @name catI18nService#translate
+     * @function
+     *
+     * @description
+     * Tries to resolve the given key to a message of the given locale. The messages are retrieved from the
+     * {@link catI18nMessageSourceService} and then passed through {@link catI18nMessageParameterResolver}.
+     *
+     * @param {String} key the key of the message to be translated
+     * @param {Object|Array} [parameters] message parameters usable in the resolved message
+     * @param {String} [locale = CAT_I18N_DEFAULT_LOCALE] the locale to use for translation
+     * @returns {Promise} Returns a promise of the translated key
+     */
+    this.translate = function (key, parameters, locale) {
+        var deferred = $q.defer();
+        var model = parameters;
+
+        if (_.isArray(parameters)) {
+            parameters.forEach(function (value, idx) {
+                model['p' + idx] = value;
+            });
+        }
+
+        that.canTranslate(key, locale).then(
+            function (canTranslate) {
+                if (canTranslate) {
+                    catI18nMessageSourceService.getMessage(key, locale).then(
+                        function (message) {
+                            try {
+                                deferred.resolve(catI18nMessageParameterResolver(message, model));
+                            } catch (e) {
+                                $log.warn(e);
+                                deferred.reject(e);
+                            }
+                        },
+                        function (reason) {
+                            $log.warn(reason);
+                            deferred.reject(reason);
+                        }
+                    );
+                } else {
+                    var reason = 'No translation for key \'' + key + '\' available!';
+                    $log.warn(reason);
+                    deferred.reject(reason);
+                }
+            },
+            deferred.reject
+        );
+        return deferred.promise;
+    };
+
+    /**
+     * @ngdoc method
+     * @name catI18nService#canTranslate
+     * @function
+     *
+     * @description
+     * Wraps an object that might be a value or a (3rd party) then-able promise into a $q promise.
+     * This is useful when you are dealing with an object that might or might not be a promise, or if
+     * the promise comes from a source that can't be trusted.
+     *
+     * @param {String} key the key of the message to be translated
+     * @param {String} [locale] the locale to use for translation
+     * @returns {Promise} Returns a promise which resolves to true when a message for the given key exists for the
+     * specified locale
+     */
+    this.canTranslate = function (key, locale) {
+        var deferred = $q.defer();
+
+        catI18nMessageSourceService.getMessages(locale).then(
+            function (messages) {
+                deferred.resolve(!_.isUndefined(messages) && !_.isUndefined(messages[key]));
+            },
+            function (reason) {
+                $q.reject(reason);
+            }
+        );
+
+        return deferred.promise;
+    };
+}
+
+angular.module('cat.service.i18n')
+/**
+ * @ngdoc value
+ * @name catI18nMessageParameterResolver
+ * @value
+ *
+ * @description
+ * A function which accepts a message and parameters and returns the resolved message
+ */
+    .value('catI18nMessageParameterResolver', function (message, parameters) {
+        return _.template(message, parameters || {}, {interpolate: /{{([\s\S\d]+?)}}/g});
+    })
+
+
+/**
+ * @ngdoc service
+ * @name catI18nService
+ * @service
+ *
+ * @description
+ * A service to translate message keys to messages of specivic locales
+ *
+ *
+ * @param $q
+ * @param catI18nMessageSourceService
+ * @param catI18nMessageParameterResolver
+ * @constructor
+ */
+    .service('catI18nService', ['$q', '$log', 'catI18nMessageSourceService', 'catI18nMessageParameterResolver', CatI18nService]);
+
+})(window, document);
+
+(function(window, document, undefined) {
+'use strict';
 
 
 angular.module('cat.service')
@@ -1648,7 +2234,7 @@ angular.module('cat.service')
                 function success(data) {
                     var pagination = searchRequest.pagination();
 
-                    deferred.resolve({
+                    var result = {
                         count: data.totalCount,
                         collection: data.elements,
                         pagination: pagination,
@@ -1658,7 +2244,13 @@ angular.module('cat.service')
                         isSinglePageList: data.totalCount <= pagination.size,
                         endpoint: endpoint,
                         searchRequest: searchRequest
-                    });
+                    };
+
+                    delete data.totalCount;
+                    delete data.elements;
+                    delete data.facets;
+
+                    deferred.resolve(_.assign(result, data));
                 },
                 function error(reason) {
                     deferred.reject(reason);
@@ -1842,8 +2434,6 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
             url = config.url || url;
         }
 
-        var listUrl = baseUrl + '/' + url;
-
         var endpoint = {
             model: window.cat.util.defaultModelResolver(name),
             url: url
@@ -1994,8 +2584,9 @@ angular.module('cat.service')
 'use strict';
 
 
-function MenuEntry(menuEntryId, options) {
+function MenuEntry(menuEntryId, options, parent) {
     this.id = menuEntryId;
+    this.completeId = parent.completeId + '.' + this.id;
     var _options = options;
 
     this.getOptions = function () {
@@ -2011,13 +2602,15 @@ function MenuEntry(menuEntryId, options) {
     };
 }
 
-function MenuGroup(groupId, options) {
+function MenuGroup(groupId, options, parent) {
+    var that = this;
     this.id = groupId;
+    this.completeId = parent.completeId + '.' + this.id;
     var _menuEntries = [];
     var _options = options;
 
     this.addMenuEntry = function (menuEntryId, options) {
-        _menuEntries.push(new MenuEntry(menuEntryId, options));
+        _menuEntries.push(new MenuEntry(menuEntryId, options, that));
     };
 
     this.getOptions = function () {
@@ -2040,18 +2633,20 @@ function MenuGroup(groupId, options) {
 }
 
 function Menu(menuId, options) {
+    var that = this;
     this.id = menuId;
+    this.completeId = this.id;
     var _menuEntries = [];
     var _menuGroups = {};
     var _options = options;
 
     this.addMenuGroup = function (groupId, options) {
-        _menuGroups[groupId] = new MenuGroup(groupId, options);
+        _menuGroups[groupId] = new MenuGroup(groupId, options, that);
     };
 
     this.addMenuEntry = function (groupId, menuEntryId, options) {
         if (_.isUndefined(groupId)) {
-            _menuEntries.push(new MenuEntry(menuEntryId, options));
+            _menuEntries.push(new MenuEntry(menuEntryId, options, that));
         } else {
             _menuGroups[groupId].addMenuEntry(menuEntryId, options);
         }
@@ -2280,6 +2875,14 @@ window.cat.util.pluralize = function (string) {
     }
 
 };
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
 })(window, document);
 
 (function(window, document, undefined) {
@@ -2386,7 +2989,7 @@ var listRoute = function (config) {
 /**
  * A helper function for detail routes which applies a few optimizations and some auto configuration.
  * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
- * 'template/base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
+ * 'template/cat-base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
  * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
  * object which pre-loads all the necessary data.
  * @param {Object} config the route config object which will be used to generate the actual route configuration
@@ -2420,6 +3023,8 @@ var detailRoute = function (config) {
         });
     }
 
+    var tabs;
+
     var templateUrls = {
         edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
         view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
@@ -2430,6 +3035,12 @@ var detailRoute = function (config) {
             main: templateUrls.view,
             additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
         };
+    } else if (config.additionalViewTemplate === 'tabs') {
+        templateUrls.view = {
+            main: templateUrls.view,
+            additional: 'template/cat-base-additional-details-tabs-view.tpl.html'
+        };
+        tabs = config.additionalViewTemplateTabs;
     }
 
     function getEndpoint($route, catApiService) {
@@ -2476,6 +3087,7 @@ var detailRoute = function (config) {
             endpoint: endpoint,
             Model: Model,
             templateUrls: templateUrls,
+            tabs: tabs,
             baseUrl: baseUrl
         };
 
@@ -2529,7 +3141,7 @@ var detailRoute = function (config) {
     }
 
     return {
-        templateUrl: config.templateUrl || 'template/base-detail.tpl.html',
+        templateUrl: config.templateUrl || 'template/cat-base-detail.tpl.html',
         controller: 'CatBaseDetailController',
         reloadOnSearch: config.reloadOnSearch,
         resolve: {
