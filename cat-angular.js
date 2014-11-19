@@ -1,35 +1,3 @@
-/*!
- * Copyright 2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/*!
- * Copyright 2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-(function(window, document, undefined) {
-'use strict';
 window.cat = {};
 
 angular.module('cat.controller.base.list', []);
@@ -44,7 +12,7 @@ angular.module('cat.service.i18n', []);
 angular.module('cat.service', ['angularSpinner', 'ngRoute', 'cat.service.api', 'cat.service.i18n']);
 
 angular.module('cat.directives.i18n', ['cat.service.i18n']);
-angular.module('cat.directives', ['cat.directives.i18n', 'ui.select2', 'ui.bootstrap.pagination']);
+angular.module('cat.directives', ['cat.template', 'cat.directives.i18n', 'ui.select2', 'ui.bootstrap.pagination']);
 
 angular.module('cat', [
     'cat.service',
@@ -544,10 +512,18 @@ function CatBaseTabsController($scope, $controller, $routeParams, $location, con
     };
 
     $scope.selectTab = function (tabName) {
+        if (_.isUndefined($location.search().tab) && tabName === $scope.tabNames[0]) {
+            // don't add 'default' tab to url
+            return;
+        }
         $location.search('tab', tabName);
     };
 
     var isTabActive = function (tab) {
+        if (tab.name === $scope.tabNames[0] && _.isUndefined($routeParams.tab)) {
+            // first tab is active if no parameter is given
+            return true;
+        }
         return $routeParams.tab === tab.name;
     };
 
@@ -556,6 +532,9 @@ function CatBaseTabsController($scope, $controller, $routeParams, $location, con
     }, function (newValue) {
         if (_.isString(newValue.tab)) {
             $scope.activateTab(newValue.tab);
+        } else if (_.isUndefined(newValue.tab)) {
+            // activate first tab if undefined
+            $scope.activateTab($scope.tabNames[0]);
         }
     });
 
@@ -1368,24 +1347,6 @@ angular.module('cat')
             }
         };
     });
-
-angular.module('cat')
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1413,6 +1374,24 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
     'cc.catalysts.general.new': 'New'
 });
+
+
+angular.module('cat')
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
 
 
 
@@ -3028,6 +3007,4 @@ window.cat.util.route = {
     list: listRoute,
     detail: detailRoute
 };
-})(window, document);
-
 //# sourceMappingURL=cat-angular.js.map

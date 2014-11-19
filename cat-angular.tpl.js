@@ -1,35 +1,3 @@
-/*!
- * Copyright 2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-/*!
- * Copyright 2014 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-(function(window, document, undefined) {
-'use strict';
 (function(module) {
 try {
   module = angular.module('cat');
@@ -258,6 +226,25 @@ module.run(['$templateCache', function($templateCache) {
 }]);
 })();
 
-})(window, document);
+(function(module) {
+try {
+  module = angular.module('cat');
+} catch (e) {
+  module = angular.module('cat', []);
+}
+module.run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/tabs/tabset.html',
+    '<div class="row tabset">\n' +
+    '    <!-- override angular-ui template -->\n' +
+    '    <div class="col-sm-2">\n' +
+    '        <ul class="nav nav-stacked nav-pills" ng-transclude></ul>\n' +
+    '    </div>\n' +
+    '    <div class="col-sm-10 tab-content">\n' +
+    '        <div class="tab-pane" ng-repeat="tab in tabs" ng-class="{active: tab.active}"\n' +
+    '             tab-content-transclude="tab"></div>\n' +
+    '    </div>\n' +
+    '</div>');
+}]);
+})();
 
 //# sourceMappingURL=cat-angular.tpl.js.map
