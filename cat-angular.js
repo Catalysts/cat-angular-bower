@@ -1,4 +1,19 @@
-/*
+/*!
+ * Copyright 2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/*!
  * Copyright 2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,10 +53,6 @@ angular.module('cat', [
     'cat.controller'
 ]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 window.cat = window.cat || {};
@@ -80,10 +91,6 @@ window.cat.Facet = function (data) {
         return new window.cat.FacetTerm(facet);
     });
 };
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 window.cat = window.cat || {};
@@ -226,10 +233,6 @@ window.cat.SearchRequest = function (searchUrlParams) {
         $location.search(ret);
     };
 };
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 /**
@@ -453,12 +456,9 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
         $log.info('Couldn\'t instantiate controller with name ' + config.controller);
     }
 }
+CatBaseDetailController.$inject = ["$scope", "$routeParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catBreadcrumbsService", "config"];
 
 angular.module('cat.controller.base.detail').controller('CatBaseDetailController', CatBaseDetailController);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 /**
@@ -526,10 +526,6 @@ angular.module('cat.controller.base.list')
     .controller('CatBaseListController',
     ['$scope', '$controller', '$log', 'catBreadcrumbsService', 'config', CatBaseListController]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 function CatBaseTabsController($scope, $controller, $routeParams, $location, config) {
@@ -640,15 +636,12 @@ function CatBaseTabsController($scope, $controller, $routeParams, $location, con
         }
     }];
 }
+CatBaseTabsController.$inject = ["$scope", "$controller", "$routeParams", "$location", "config"];
 
 angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
-    .directive('catAutofocus', function CatAutofocusDirective($timeout) {
+    .directive('catAutofocus', ["$timeout", function CatAutofocusDirective($timeout) {
         return {
             restrict: 'A',
             link: function CatAutofocusLink(scope, element) {
@@ -661,12 +654,8 @@ angular.module('cat')
                 }, 100);
             }
         };
-    });
+    }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .directive('catCheckbox', function CatCheckboxDirective() {
@@ -685,10 +674,6 @@ angular.module('cat')
             }
         };
     });
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .directive('catConfirmClick', function CatConfirmClickDirective() {
@@ -706,10 +691,6 @@ angular.module('cat')
         };
     });
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .directive('catFacets', function CatFacetsDirective() {
@@ -744,7 +725,7 @@ angular.module('cat')
 
                 scope.catPaginatedController = catPaginatedController;
             },
-            controller: function CatFacetsController($scope) {
+            controller: ["$scope", function CatFacetsController($scope) {
                 $scope.isActive = function (facet) {
                     return !!$scope.catPaginatedController.getSearch()[facet.name];
                 };
@@ -784,14 +765,10 @@ angular.module('cat')
                 $scope.facetSelectOptions = {
                     allowClear: true
                 };
-            }
+            }]
         };
     });
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.05.2014.
  */
@@ -809,10 +786,6 @@ angular.module('cat')
             template: '<div class="label label-danger" ng-if="errors[name]"><ul><li ng-repeat="error in errors[name]">{{error}}</li></ul></div>'
         };
     });
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 21.10.2014.
  */
@@ -857,10 +830,6 @@ angular.module('cat.directives.i18n')
         };
     }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.05.2014.
  */
@@ -897,10 +866,6 @@ angular.module('cat')
             templateUrl: 'template/cat-input.tpl.html'
         };
     });
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .directive('catLoadMore', function CatLoadMoreDirective() {
@@ -937,10 +902,6 @@ angular.module('cat')
         };
     });
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .directive('catMainMenu', ['$mainMenu', '$rootScope', function CatMainMenuDirective($mainMenu, $rootScope) {
@@ -985,13 +946,9 @@ angular.module('cat')
         };
     }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
-    .directive('catPaginated', function CatPaginatedDirective($log, catI18nService) {
+    .directive('catPaginated', ["$log", "catI18nService", function CatPaginatedDirective($log, catI18nService) {
         var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
 
         return {
@@ -1021,7 +978,7 @@ angular.module('cat')
                 }
             },
             controllerAs: 'catPaginatedController',
-            controller: function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService) {
+            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService) {
                 var that = this;
                 var searchTimeout = null, DELAY_ON_SEARCH = 500;
                 var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
@@ -1141,14 +1098,10 @@ angular.module('cat')
                 $scope.$on('SortChanged', function (event, value) {
                     that.sort(value);
                 });
-            }
+            }]
         };
-    });
+    }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 function CatSelectLink(scope, element) {
@@ -1239,6 +1192,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
         }
     }, options['ui-select2']);
 }
+CatSelectController.$inject = ["$scope", "$log", "catApiService", "catSelectConfigService"];
 
 /**
  * @ngdoc directive
@@ -1295,13 +1249,9 @@ function CatSelectDirective() {
 angular.module('cat.directives')
     .directive('catSelect', CatSelectDirective);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
-    .directive('catSortable', function CatSortableDirective($compile) {
+    .directive('catSortable', ["$compile", function CatSortableDirective($compile) {
         return {
             restrict: 'AC',
             require: '^catPaginated',
@@ -1325,7 +1275,7 @@ angular.module('cat')
                 element.text('');
                 element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')" cat-i18n="cc.catalysts.cat-sortable.sort.' + property + '">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
             },
-            controller: function CatSortableController($scope) {
+            controller: ["$scope", function CatSortableController($scope) {
                 $scope.toggleSort = function (property) {
                     if ($scope.sort.property === property) {
                         $scope.sort.isDesc = !$scope.sort.isDesc;
@@ -1340,13 +1290,9 @@ angular.module('cat')
                 $scope.$on('SortChanged', function (event, value) {
                     $scope.sort = value;
                 });
-            }
+            }]
         };
-    });
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
+    }]);
 
 angular.module('cat')
     .directive('form', ['$timeout', function CatFormDirective($timeout) {
@@ -1394,10 +1340,6 @@ angular.module('cat')
         };
     }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 angular.module('cat')
@@ -1426,46 +1368,6 @@ angular.module('cat')
             }
         };
     });
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
-});
-
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 angular.module('cat')
     .filter('replaceText', function CatReplaceTetFilter() {
@@ -1484,10 +1386,34 @@ angular.module('cat')
         };
     });
 
-})(window, document);
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
 
-(function(window, document, undefined) {
-'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 
 
 /**
@@ -1835,10 +1761,6 @@ angular.module('cat.service.api').provider('catApiService', CatApiServiceProvide
 // $api is deprecated, will be removed in a future release
 angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 /**
@@ -1953,10 +1875,6 @@ angular.module('cat.service').service('catBreadcrumbsService', CatBreadcrumbsSer
 
 // TODO remove in future release
 angular.module('cat.service').service('$breadcrumbs', CatBreadcrumbsService);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1996,10 +1914,6 @@ angular.module('cat.service.i18n')
     .constant('CAT_I18N_DEFAULT_LOCALE', 'de')
     .service('catI18nLocaleService', ['$q', '$locale', 'CAT_I18N_DEFAULT_LOCALE', CatI18nLocaleService]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -2095,10 +2009,6 @@ angular.module('cat.service.i18n')
  */
     .service('catI18nMessageSourceService', ['$q', 'catI18nLocaleService', 'CAT_I18N_DEFAULT_LOCALE', CatI18nMessageSourceService]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 21.10.2014.
  */
@@ -2220,10 +2130,6 @@ angular.module('cat.service.i18n')
  */
     .service('catI18nService', ['$q', '$log', 'catI18nMessageSourceService', 'catI18nMessageParameterResolver', CatI18nService]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 angular.module('cat.service')
@@ -2279,10 +2185,6 @@ angular.module('cat.service')
         };
     }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.08.2014.
  */
@@ -2339,13 +2241,10 @@ function CatRouteServiceProvider($routeProvider) {
         return viewNames;
     };
 }
+CatRouteServiceProvider.$inject = ["$routeProvider"];
 
 
 angular.module('cat.service').provider('catRouteService', CatRouteServiceProvider);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.08.2014.
  */
@@ -2394,10 +2293,6 @@ function CatSelectConfigServiceProvider() {
 
 
 angular.module('cat.service').provider('catSelectConfigService', CatSelectConfigServiceProvider);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.08.2014.
  */
@@ -2463,20 +2358,17 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
         };
     };
 }
+CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
 
 
 angular.module('cat.service').provider('catViewService', CatViewServiceProvider);
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.05.2014.
  */
 
 
 angular.module('cat.service')
-    .factory('errorHttpInterceptor', function CatErrorHttpInterceptor($q, $globalMessages, loadingService) {
+    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", function CatErrorHttpInterceptor($q, $globalMessages, loadingService) {
         return {
             'request': function (config) {
                 loadingService.start();
@@ -2508,22 +2400,18 @@ angular.module('cat.service')
                 return $q.reject(rejection);
             }
         };
-    })
-    .config(function ($httpProvider) {
+    }])
+    .config(["$httpProvider", function ($httpProvider) {
         $httpProvider.interceptors.push('errorHttpInterceptor');
-    });
+    }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 01.06.2014.
  */
 
 
 angular.module('cat.service')
-    .factory('loadingService', function CatLoadingService($rootScope, usSpinnerService, $timeout) {
+    .factory('loadingService', ["$rootScope", "usSpinnerService", "$timeout", function CatLoadingService($rootScope, usSpinnerService, $timeout) {
         var timeout = 50;
         var animationDuration = 200;
         var activeCount = 0;
@@ -2576,12 +2464,8 @@ angular.module('cat.service')
             start: start,
             stop: stop
         };
-    });
+    }]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 
 
 function MenuEntry(menuEntryId, options, parent) {
@@ -2771,16 +2655,12 @@ function MainMenuProvider() {
 
 angular.module('cat.service').provider('$mainMenu', MainMenuProvider);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 05.05.2014.
  */
 
 
-angular.module('cat.service').service('$globalMessages', function CatGlobalMessages($rootScope) {
+angular.module('cat.service').service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
     var messages = {};
 
     var self = this;
@@ -2846,12 +2726,8 @@ angular.module('cat.service').service('$globalMessages', function CatGlobalMessa
     $rootScope.$on('$routeChangeSuccess', function () {
         self.clearMessages();
     });
-});
+}]);
 
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 26.08.2014.
  */
@@ -2883,10 +2759,6 @@ window.cat.util.capitalize = function (string) {
 
     return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
 };
-})(window, document);
-
-(function(window, document, undefined) {
-'use strict';
 /**
  * Created by tscheinecker on 01.08.2014.
  */
@@ -3157,3 +3029,5 @@ window.cat.util.route = {
     detail: detailRoute
 };
 })(window, document);
+
+//# sourceMappingURL=cat-angular.js.map

@@ -1,4 +1,4 @@
-/*
+/*!
  * Copyright 2014 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,3 +70,5 @@
   /* important is needed to override element style attribute set by spin.js */
   position: fixed !important;
 }
+
+/*# sourceMappingURL=cat-angular.css.map */
