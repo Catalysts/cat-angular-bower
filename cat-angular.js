@@ -1347,6 +1347,24 @@ angular.module('cat')
             }
         };
     });
+
+angular.module('cat')
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1374,24 +1392,6 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
     'cc.catalysts.general.new': 'New'
 });
-
-
-angular.module('cat')
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
 
 
 

@@ -210,7 +210,7 @@ module.run(['$templateCache', function($templateCache) {
     '            <span cat-i18n="cc.catalysts.cat-paginated.noItemsFound">Keine Einträge gefunden</span>\n' +
     '        </div>\n' +
     '    </div>\n' +
-    '    <div ng-transclude ng-show="listData.count !== 0"></div>\n' +
+    '    <div ng-transclude></div>\n' +
     '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
     '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
     '                    ng-model="listData.pagination.page" max-size="10"\n' +
