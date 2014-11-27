@@ -1365,6 +1365,34 @@ angular.module('cat')
         };
     });
 
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 
 
 /**
@@ -2678,34 +2706,6 @@ angular.module('cat.service').service('$globalMessages', ["$rootScope", function
         self.clearMessages();
     });
 }]);
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
-});
 
 /**
  * Created by tscheinecker on 26.08.2014.
