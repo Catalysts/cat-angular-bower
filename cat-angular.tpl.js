@@ -150,8 +150,8 @@ try {
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
     '<ul class="nav navbar-nav">\n' +
-    '    <li class="dropdown" ng-repeat="menu in menus">\n' +
-    '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)">\n' +
+    '    <li class="dropdown" ng-repeat="menu in menus" dropdown="">\n' +
+    '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)" dropdown-toggle="">\n' +
     '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span> <b\n' +
     '                class="caret"></b>\n' +
     '        </a>\n' +
