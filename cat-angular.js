@@ -1,23 +1,81 @@
 window.cat = {};
 
-angular.module('cat.controller.base.list', []);
-angular.module('cat.controller.base.tabs', []);
-angular.module('cat.controller.base.detail', ['cat.controller.base.tabs']);
-angular.module('cat.controller', ['cat.controller.base.detail', 'cat.controller.base.list']);
+angular.module('cat.filters.replaceText', []);
+angular.module('cat.filters', ['cat.filters.replaceText']);
 
 angular.module('cat.template', ['ui.bootstrap.tpls']);
 
 angular.module('cat.service.api', []);
+angular.module('cat.service.breadcrumbs', []);
 angular.module('cat.service.i18n', []);
-angular.module('cat.service', ['angularSpinner', 'ngRoute', 'cat.service.api', 'cat.service.i18n']);
+angular.module('cat.service.listDataLoading', ['cat.service.api']);
+angular.module('cat.service.route', ['ngRoute']);
+angular.module('cat.service.selectConfig', []);
+angular.module('cat.service.view', ['cat.service.api', 'cat.service.route']);
+angular.module('cat.service.loading', ['angularSpinner']);
+angular.module('cat.service.message', []);
+angular.module('cat.service.httpIntercept', ['cat.service.loading', 'cat.service.message']);
+angular.module('cat.service.menu', []);
+angular.module('cat.service', [
+    'cat.service.api',
+    'cat.service.breadcrumbs',
+    'cat.service.i18n',
+    'cat.service.listDataLoading',
+    'cat.service.route',
+    'cat.service.selectConfig',
+    'cat.service.view',
+    'cat.service.loading',
+    'cat.service.httpIntercept',
+    'cat.service.menu',
+    'cat.service.message'
+]);
+
+angular.module('cat.directives.autofocus', []);
+angular.module('cat.directives.checkbox', []);
+angular.module('cat.directives.confirmClick', []);
+angular.module('cat.directives.fieldErrors', []);
+angular.module('cat.directives.inputs', []);
+angular.module('cat.directives.loadMore', []);
+angular.module('cat.directives.menu', ['cat.service.menu']);
+angular.module('cat.directives.select', ['ui.select2', 'cat.service.api', 'cat.service.selectConfig']);
 
 angular.module('cat.directives.i18n', ['cat.service.i18n']);
-angular.module('cat.directives', ['cat.template', 'cat.directives.i18n', 'ui.select2', 'ui.bootstrap.pagination']);
+
+angular.module('cat.directives.paginated', ['ui.bootstrap.pagination']);
+angular.module('cat.directives.facets', ['cat.directives.paginated']);
+angular.module('cat.directives.sortable', ['cat.directives.paginated']);
+
+angular.module('cat.directives.form', []);
+angular.module('cat.directives.numbersOnly', []);
+
+angular.module('cat.controller.base.list', ['cat.service.breadcrumbs']);
+angular.module('cat.controller.base.tabs', []);
+angular.module('cat.controller.base.detail', ['cat.service.breadcrumbs', 'cat.controller.base.tabs']);
+angular.module('cat.controller', ['cat.controller.base.detail', 'cat.controller.base.list']);
+
+angular.module('cat.directives', [
+    'cat.template',
+    'cat.directives.autofocus',
+    'cat.directives.checkbox',
+    'cat.directives.confirmClick',
+    'cat.directives.fieldErrors',
+    'cat.directives.inputs',
+    'cat.directives.loadMore',
+    'cat.directives.menu',
+    'cat.directives.select',
+    'cat.directives.i18n',
+    'cat.directives.paginated',
+    'cat.directives.facets',
+    'cat.directives.sortable',
+    'cat.directives.form',
+    'cat.directives.numbersOnly'
+]);
 
 angular.module('cat', [
     'cat.service',
     'cat.template',
     'cat.directives',
+    'cat.filters',
     'cat.controller'
 ]);
 
@@ -619,7 +677,25 @@ CatBaseTabsController.$inject = ["$scope", "$controller", "$routeParams", "$loca
 
 angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
 
-angular.module('cat')
+angular.module('cat.filters.replaceText')
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
+
+angular.module('cat.directives.autofocus')
     .directive('catAutofocus', ["$timeout", function CatAutofocusDirective($timeout) {
         return {
             restrict: 'A',
@@ -636,7 +712,7 @@ angular.module('cat')
     }]);
 
 
-angular.module('cat')
+angular.module('cat.directives.checkbox')
     .directive('catCheckbox', function CatCheckboxDirective() {
         return {
             replace: true,
@@ -654,7 +730,7 @@ angular.module('cat')
         };
     });
 
-angular.module('cat')
+angular.module('cat.directives.confirmClick')
     .directive('catConfirmClick', function CatConfirmClickDirective() {
         return {
             restrict: 'A',
@@ -671,7 +747,7 @@ angular.module('cat')
     });
 
 
-angular.module('cat')
+angular.module('cat.directives.facets')
     .directive('catFacets', function CatFacetsDirective() {
         function _initDefaults(scope) {
             if (_.isUndefined(scope.listData)) {
@@ -753,7 +829,7 @@ angular.module('cat')
  */
 
 
-angular.module('cat')
+angular.module('cat.directives.fieldErrors')
     .directive('catFieldErrors', function CatFieldErrorsDirective() {
         return {
             replace: 'true',
@@ -814,7 +890,7 @@ angular.module('cat.directives.i18n')
  */
 
 
-angular.module('cat')
+angular.module('cat.directives.inputs')
     .directive('input', function CatInputDirective() {
         return {
             require: 'ngModel',
@@ -846,7 +922,7 @@ angular.module('cat')
         };
     });
 
-angular.module('cat')
+angular.module('cat.directives.loadMore')
     .directive('catLoadMore', function CatLoadMoreDirective() {
         return {
             replace: true,
@@ -882,7 +958,7 @@ angular.module('cat')
     });
 
 
-angular.module('cat')
+angular.module('cat.directives.menu')
     .directive('catMainMenu', ['$mainMenu', '$rootScope', function CatMainMenuDirective($mainMenu, $rootScope) {
         return {
             restrict: 'E',
@@ -926,7 +1002,7 @@ angular.module('cat')
     }]);
 
 
-angular.module('cat')
+angular.module('cat.directives.paginated')
     .directive('catPaginated', ["$log", "catI18nService", function CatPaginatedDirective($log, catI18nService) {
         var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
 
@@ -1225,11 +1301,11 @@ function CatSelectDirective() {
     };
 }
 
-angular.module('cat.directives')
+angular.module('cat.directives.select')
     .directive('catSelect', CatSelectDirective);
 
 
-angular.module('cat')
+angular.module('cat.directives.sortable')
     .directive('catSortable', ["$compile", function CatSortableDirective($compile) {
         return {
             restrict: 'AC',
@@ -1273,7 +1349,7 @@ angular.module('cat')
         };
     }]);
 
-angular.module('cat')
+angular.module('cat.directives.form')
     .directive('form', ['$timeout', function CatFormDirective($timeout) {
         return {
             restrict: 'E',
@@ -1321,7 +1397,7 @@ angular.module('cat')
 
 
 
-angular.module('cat')
+angular.module('cat.directives.numbersOnly')
     .directive('numbersOnly', function CatNumbersOnlyDirective() {
         return {
             require: 'ngModel',
@@ -1347,24 +1423,6 @@ angular.module('cat')
             }
         };
     });
-
-angular.module('cat')
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -2150,10 +2208,10 @@ function CatBreadcrumbsService() {
     };
 }
 
-angular.module('cat.service').service('catBreadcrumbsService', CatBreadcrumbsService);
+angular.module('cat.service.breadcrumbs').service('catBreadcrumbsService', CatBreadcrumbsService);
 
 // TODO remove in future release
-angular.module('cat.service').service('$breadcrumbs', CatBreadcrumbsService);
+angular.module('cat.service.breadcrumbs').service('$breadcrumbs', CatBreadcrumbsService);
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -2411,7 +2469,7 @@ angular.module('cat.service.i18n')
 
 
 
-angular.module('cat.service')
+angular.module('cat.service.listDataLoading')
     .factory('catListDataLoadingService', ['catApiService', '$route', '$q', function CatListDataLoadingService(catApiService, $route, $q) {
         var load = function (endpoint, searchRequest) {
             var deferred = $q.defer();
@@ -2523,7 +2581,7 @@ function CatRouteServiceProvider($routeProvider) {
 CatRouteServiceProvider.$inject = ["$routeProvider"];
 
 
-angular.module('cat.service').provider('catRouteService', CatRouteServiceProvider);
+angular.module('cat.service.route').provider('catRouteService', CatRouteServiceProvider);
 /**
  * Created by tscheinecker on 05.08.2014.
  */
@@ -2571,7 +2629,7 @@ function CatSelectConfigServiceProvider() {
 }
 
 
-angular.module('cat.service').provider('catSelectConfigService', CatSelectConfigServiceProvider);
+angular.module('cat.service.selectConfig').provider('catSelectConfigService', CatSelectConfigServiceProvider);
 /**
  * Created by tscheinecker on 05.08.2014.
  */
@@ -2640,13 +2698,13 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
 CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
 
 
-angular.module('cat.service').provider('catViewService', CatViewServiceProvider);
+angular.module('cat.service.view').provider('catViewService', CatViewServiceProvider);
 /**
  * Created by tscheinecker on 05.05.2014.
  */
 
 
-angular.module('cat.service')
+angular.module('cat.service.httpIntercept')
     .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", function CatErrorHttpInterceptor($q, $globalMessages, loadingService) {
         return {
             'request': function (config) {
@@ -2689,7 +2747,7 @@ angular.module('cat.service')
  */
 
 
-angular.module('cat.service')
+angular.module('cat.service.loading')
     .factory('loadingService', ["$rootScope", "usSpinnerService", "$timeout", function CatLoadingService($rootScope, usSpinnerService, $timeout) {
         var timeout = 50;
         var animationDuration = 200;
@@ -2932,14 +2990,14 @@ function MainMenuProvider() {
     };
 }
 
-angular.module('cat.service').provider('$mainMenu', MainMenuProvider);
+angular.module('cat.service.menu').provider('$mainMenu', MainMenuProvider);
 
 /**
  * Created by tscheinecker on 05.05.2014.
  */
 
 
-angular.module('cat.service').service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
+angular.module('cat.service.message').service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
     var messages = {};
 
     var self = this;
