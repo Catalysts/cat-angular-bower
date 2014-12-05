@@ -1,8 +1,8 @@
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
@@ -21,9 +21,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-detail.tpl.html',
@@ -79,9 +79,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-list.tpl.html',
@@ -101,9 +101,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-facets.tpl.html',
@@ -126,9 +126,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-input.tpl.html',
@@ -143,9 +143,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
@@ -178,9 +178,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-paginated.tpl.html',
@@ -228,9 +228,9 @@ module.run(['$templateCache', function($templateCache) {
 
 (function(module) {
 try {
-  module = angular.module('cat');
+  module = angular.module('cat.template');
 } catch (e) {
-  module = angular.module('cat', []);
+  module = angular.module('cat.template', []);
 }
 module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/tabs/tabset.html',
