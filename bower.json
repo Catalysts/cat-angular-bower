@@ -1,6 +1,6 @@
 {
     "name": "cat-angular",
-    "version": "0.0.19",
+    "version": "0.0.20",
     "homepage": "https://github.com/Catalysts/cat-angular",
     "authors": [
         "Thomas Scheinecker <thomas.scheinecker@catalysts.cc>"
@@ -23,7 +23,7 @@
     ],
     "dependencies": {
         "angular": "^1.2.26",
-        "angular-route": "^1.2.26",
+        "angular-ui-router": ">=0.2.13",
         "lodash": "^2.4.1",
         "angular-spinner": ">=0.5.0",
         "angular-bootstrap": "~0.12.0"

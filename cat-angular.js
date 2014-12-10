@@ -10,7 +10,7 @@ angular.module('cat.service.api', ['cat.service.conversion']);
 angular.module('cat.service.breadcrumbs', []);
 angular.module('cat.service.i18n', []);
 angular.module('cat.service.listDataLoading', ['cat.service.api']);
-angular.module('cat.service.route', ['ngRoute']);
+angular.module('cat.service.route', ['ui.router']);
 angular.module('cat.service.selectConfig', []);
 angular.module('cat.service.view', ['cat.service.api', 'cat.service.route']);
 angular.module('cat.service.loading', ['angularSpinner']);
@@ -294,7 +294,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
  * * title - a function to resolve a 'title' of the current object
  *
  * @param $scope
- * @param $routeParams
+ * @param $stateParams
  * @param $location
  * @param $window
  * @param $globalMessages
@@ -304,7 +304,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
  * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
  * @constructor
  */
-function CatBaseDetailController($scope, $routeParams, $location, $window, $globalMessages, $controller, $log, catBreadcrumbsService, config) {
+function CatBaseDetailController($scope, $stateParams, $location, $window, $globalMessages, $controller, $log, catBreadcrumbsService, config) {
     $scope.detail = config.detail;
     $scope.editDetail = undefined;
     $scope.$fieldErrors = {};
@@ -316,7 +316,7 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
 
     $scope.uiStack = catBreadcrumbsService.generateFromConfig(config);
 
-    if ($routeParams.id === 'new') {
+    if ($stateParams.id === 'new') {
         catBreadcrumbsService.push({
             title: 'New',
             key: 'cc.catalysts.general.new'
@@ -357,7 +357,7 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
      * reloads the current object from the server
      */
     var reload = function () {
-        endpoint.get($routeParams.id).then(function (data) {
+        endpoint.get($stateParams.id).then(function (data) {
             $scope.detail = data;
             update();
         });
@@ -365,7 +365,7 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
 
     $scope.reloadDetails = reload;
 
-    $scope.exists = !!$routeParams.id && $routeParams.id !== 'new';
+    $scope.exists = !!$stateParams.id && $stateParams.id !== 'new';
 
     /**
      * Creates a new copy of the given model and sets its parent if applicable.
@@ -488,7 +488,7 @@ function CatBaseDetailController($scope, $routeParams, $location, $window, $glob
         $log.info('Couldn\'t instantiate controller with name ' + config.controller);
     }
 }
-CatBaseDetailController.$inject = ["$scope", "$routeParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catBreadcrumbsService", "config"];
+CatBaseDetailController.$inject = ["$scope", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catBreadcrumbsService", "config"];
 
 angular.module('cat.controller.base.detail').controller('CatBaseDetailController', CatBaseDetailController);
 
@@ -560,7 +560,7 @@ angular.module('cat.controller.base.list')
 
 
 
-function CatBaseTabsController($scope, $controller, $routeParams, $location, config) {
+function CatBaseTabsController($scope, $controller, $stateParams, $location, config) {
     var endpoint = config.endpoint;
 
     $scope.tabs = config.tabs;
@@ -584,11 +584,11 @@ function CatBaseTabsController($scope, $controller, $routeParams, $location, con
     };
 
     var isTabActive = function (tab) {
-        if (tab.name === $scope.tabNames[0] && _.isUndefined($routeParams.tab)) {
+        if (tab.name === $scope.tabNames[0] && _.isUndefined($stateParams.tab)) {
             // first tab is active if no parameter is given
             return true;
         }
-        return $routeParams.tab === tab.name;
+        return $stateParams.tab === tab.name;
     };
 
     $scope.$watchCollection(function () {
@@ -679,27 +679,9 @@ function CatBaseTabsController($scope, $controller, $routeParams, $location, con
         }
     }];
 }
-CatBaseTabsController.$inject = ["$scope", "$controller", "$routeParams", "$location", "config"];
+CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "config"];
 
 angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
-
-angular.module('cat.filters.replaceText')
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 
 angular.module('cat.directives.autofocus')
     .directive('catAutofocus', ["$timeout", function CatAutofocusDirective($timeout) {
@@ -1430,6 +1412,24 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
+
+angular.module('cat.filters.replaceText')
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1458,306 +1458,6 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.general.new': 'New'
 });
 
-/**
- * Created by tscheinecker on 26.08.2014.
- */
-
-
-window.cat.util = window.cat.util || {};
-
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
-
-var toLowerCaseName = function (name) {
-    if (!name) {
-        return '';
-    }
-    return name.toLowerCase();
-};
-
-/**
- * Helper function to extract the base url from the current route and the parent endpoints
- * @param $route The angular $route service
- * @param {string} [baseUrl]
- * @param {array} [parentEndpointNames]
- * @return {string} the extracted baseUrl which is either the provided one, or one, generated from the parentEndpointNames
- */
-var getBaseUrl = function ($route, baseUrl, parentEndpointNames) {
-    if (_.isUndefined(baseUrl)) {
-        baseUrl = $route.current.originalPath;
-        if (_.keys($route.current.pathParams).length !== 0) {
-            baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/'));
-        }
-        if (_.isArray(parentEndpointNames)) {
-            _.forEach(parentEndpointNames, function (parentEndpointName) {
-                var idName = parentEndpointName + 'Id';
-                baseUrl = baseUrl.replace(':' + idName, $route.current.params[idName]);
-            });
-        }
-    }
-
-    return baseUrl;
-};
-
-/**
- * A helper function for list routes which applies a few optimizations and some auto configuration.
- * In the current state it handles 4 settings:
- * * templateUrl - Auto-generation of the correct templateUrl based on conventions and the config.name property
- * * controller - Auto-generation of the correct controller based on conventions and the config.name property
- * * reloadOnSearch - this property is set to false
- * * resolve - a object with a 'listData' property is returned which is resolved via the correct endpoint
- *
- * @param {Object} config the route config object which will be used to generate the actual route configuration
- * @return {{reloadOnSearch: boolean, controller: string, templateUrl: (string), resolve: {config: Object}}}
- */
-var listRoute = function (config) {
-    var name = toLowerCaseName(config.name);
-
-    function getListDataPromise(catListDataLoadingService) {
-        return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
-    }
-
-    function getResolvedConfig($q, $route, catListDataLoadingService) {
-        var deferredConfig = $q.defer();
-        var resolvedConfig = {
-            controller: config.controller || config.name + 'Controller',
-            baseUrl: getBaseUrl($route, config.baseUrl),
-            title: window.cat.util.pluralize(config.name),
-            searchProps: config.searchProps || window.cat.util.defaultListSearchProps,
-            listTemplateUrl: config.listTemplateUrl || (name + '/' + name + '-list.tpl.html')
-        };
-
-        getListDataPromise(catListDataLoadingService).then(
-            function (listData) {
-                resolvedConfig.listData = listData;
-                deferredConfig.resolve(resolvedConfig);
-            }
-        );
-
-        return deferredConfig.promise;
-    }
-
-    return {
-        reloadOnSearch: false,
-        controller: 'CatBaseListController',
-        controllerAs: 'catBaseListController',
-        templateUrl: config.templateUrl || 'template/cat-base-list.tpl.html',
-        resolve: {
-            config: getResolvedConfig
-        }
-    };
-};
-
-/**
- * A helper function for detail routes which applies a few optimizations and some auto configuration.
- * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
- * 'template/cat-base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
- * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
- * object which pre-loads all the necessary data.
- * @param {Object} config the route config object which will be used to generate the actual route configuration
- * @returns {{templateUrl: (string), controller: string, reloadOnSearch: (boolean), resolve: {config: (object)}}}
- */
-var detailRoute = function (config) {
-    var endpointName, parentEndpointNames;
-
-    if (_.isString(config.endpoint)) {
-        endpointName = config.endpoint;
-    } else if (_.isObject(config.endpoint)) {
-        parentEndpointNames = config.endpoint.parents;
-        endpointName = config.endpoint.name;
-    } else {
-        endpointName = toLowerCaseName(config.name);
-    }
-
-    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
-
-    var parentUrl = '';
-    var parentTemplateNamePrefix = '';
-
-
-    if (_.isArray(parentEndpointNames)) {
-        _.forEach(parentEndpointNames, function (parentEndpointName) {
-            parentUrl += parentEndpointName;
-            parentUrl += '/';
-
-            parentTemplateNamePrefix += parentEndpointName;
-            parentTemplateNamePrefix += '-';
-        });
-    }
-
-    var tabs;
-
-    var templateUrls = {
-        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
-        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
-    };
-
-    if (config.additionalViewTemplate === true) {
-        templateUrls.view = {
-            main: templateUrls.view,
-            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
-        };
-    } else if (config.additionalViewTemplate === 'tabs') {
-        templateUrls.view = {
-            main: templateUrls.view,
-            additional: 'template/cat-base-additional-details-tabs-view.tpl.html'
-        };
-        tabs = config.additionalViewTemplateTabs;
-    }
-
-    function getEndpoint($route, catApiService) {
-        var endpoint = catApiService[endpointName];
-
-        if (_.isArray(parentEndpointNames)) {
-            _.forEach(parentEndpointNames, function (parentEndpointName, idx) {
-                var currentEndpoint;
-                if (idx === 0) {
-                    // root api endpoint
-                    currentEndpoint = catApiService[parentEndpointName];
-                } else {
-                    // child api endpoint
-                    currentEndpoint = endpoint[parentEndpointName];
-                }
-                endpoint = currentEndpoint.res($route.current.params[parentEndpointName + 'Id']);
-            });
-
-            endpoint = endpoint[endpointName];
-        }
-
-        return endpoint;
-    }
-
-    function getDetailData($route, $q, endpoint) {
-        var detailPromise;
-        var detailId = $route.current.params.id;
-        if (detailId === 'new') {
-            detailPromise = $q.when(new Model());
-        } else {
-            detailPromise = endpoint.get(detailId);
-        }
-        return detailPromise;
-    }
-
-    function getConfig($route, $q, catApiService) {
-        var deferred = $q.defer();
-        var endpoint = getEndpoint($route, catApiService);
-
-        var baseUrl = getBaseUrl($route, config.baseUrl, parentEndpointNames);
-
-        var resolvedConfig = {
-            controller: config.controller || config.name + 'DetailsController',
-            endpoint: endpoint,
-            Model: Model,
-            templateUrls: templateUrls,
-            tabs: tabs,
-            baseUrl: baseUrl
-        };
-
-
-        var detailPromise = getDetailData($route, $q, endpoint);
-        detailPromise.then(function (data) {
-            resolvedConfig.detail = data;
-        });
-
-        var parentsPromise = getParentInfo($q, endpoint);
-        parentsPromise.then(function (parents) {
-            resolvedConfig.parents = parents;
-        });
-
-        $q.all([detailPromise, parentsPromise]).then(
-            function () {
-                deferred.resolve(resolvedConfig);
-            },
-            function (reason) {
-                deferred.reject(reason);
-            }
-        );
-
-        return deferred.promise;
-    }
-
-    function getParentInfo($q, endpoint) {
-        if (!_.isUndefined(endpoint) && !_.isUndefined(endpoint.parentInfo)) {
-            var deferred = $q.defer();
-            var parents = [];
-            endpoint.parentInfo().then(
-                function (parent) {
-                    parents.push(parent);
-                    getParentInfo($q, endpoint.parentEndpoint).then(
-                        function (response) {
-                            parents.push(response);
-                            parents = _.flatten(parents);
-                            deferred.resolve(parents);
-                        },
-                        function (error) {
-                            deferred.reject(error);
-                        }
-                    );
-                }, function (error) {
-                    deferred.reject(error);
-                });
-            return deferred.promise;
-        } else {
-            return $q.when([]);
-        }
-    }
-
-    return {
-        templateUrl: config.templateUrl || 'template/cat-base-detail.tpl.html',
-        controller: 'CatBaseDetailController',
-        reloadOnSearch: config.reloadOnSearch,
-        resolve: {
-            config: function ($route, $q, catApiService) {
-                return getConfig($route, $q, catApiService);
-            }
-        }
-    };
-};
-
-window.cat.util.route = {
-    list: listRoute,
-    detail: detailRoute
-};
 
 
 /**
@@ -1787,7 +1487,7 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService) {
         var url = _endpointUrl + '/' + id + '/';
         var ret = {};
         _.forEach(_.keys(_childEndpointSettings), function (path) {
-            ret[path] = new CatApiEndpoint(url, _childEndpointSettings[path], $http);
+            ret[path] = new CatApiEndpoint(url, _childEndpointSettings[path], $http, catConversionService);
             ret[path].parentEndpoint = that;
             ret[path].parentId = id;
             ret[path].parentInfo = function () {
@@ -1813,7 +1513,7 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService) {
         var object = catConversionService.toClient(data, config);
 
         if (!_.isUndefined(object.id)) {
-            _.forEach(object, _addChildEndpoints);
+            _addChildEndpoints(object);
         }
 
         if (_.isArray(object)) {
@@ -2112,40 +1812,42 @@ angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
  *
  * @constructor
  */
-function CatBreadcrumbsService() {
-    var _bc = [];
+function CatBreadcrumbsService(catBreadcrumbs) {
     var that = this;
 
     this.clear = function () {
-        _bc = [];
+        catBreadcrumbs.length = 0;
     };
 
-    this.set = function (bc) {
-        _bc = bc;
+    this.set = function (bcs) {
+        that.clear();
+        _.forEach(bcs, function (bc) {
+            catBreadcrumbs.push(bc);
+        });
     };
 
     this.get = function () {
-        return _bc;
+        return catBreadcrumbs;
     };
 
     this.addFirst = function (entry) {
-        _bc.unshift(entry);
+        catBreadcrumbs.unshift(entry);
     };
 
     this.removeFirst = function () {
-        return _bc.shift();
+        return catBreadcrumbs.shift();
     };
 
     this.push = function (entry) {
-        _bc.push(entry);
+        catBreadcrumbs.push(entry);
     };
 
     this.pop = function () {
-        return _bc.pop();
+        return catBreadcrumbs.pop();
     };
 
     this.length = function () {
-        return _bc.length;
+        return catBreadcrumbs.length;
     };
 
     function capitalize(string) {
@@ -2153,7 +1855,7 @@ function CatBreadcrumbsService() {
     }
 
     this.replaceLast = function (newVal) {
-        _bc[_bc.length - 1] = newVal;
+        catBreadcrumbs[catBreadcrumbs.length - 1] = newVal;
     };
 
     function splitShiftAndJoin(path, amount) {
@@ -2206,11 +1908,11 @@ function CatBreadcrumbsService() {
         return uiStack;
     };
 }
+CatBreadcrumbsService.$inject = ["catBreadcrumbs"];
 
-angular.module('cat.service.breadcrumbs').service('catBreadcrumbsService', CatBreadcrumbsService);
-
-// TODO remove in future release
-angular.module('cat.service.breadcrumbs').service('$breadcrumbs', CatBreadcrumbsService);
+angular.module('cat.service.breadcrumbs')
+    .value('catBreadcrumbs', [])
+    .service('catBreadcrumbsService', CatBreadcrumbsService);
 
 
 /**
@@ -2255,6 +1957,7 @@ function _convertToClientData(serverData, context) {
     }
 
     if (_.isNumber(serverData.totalCount)) {
+        var copy = _.clone(serverData);
         var facets = [];
 
         if (!!serverData.facets) {
@@ -2271,11 +1974,11 @@ function _convertToClientData(serverData, context) {
             })
         };
 
-        delete serverData.totalCount;
-        delete serverData.elements;
-        delete serverData.facets;
+        delete copy.totalCount;
+        delete copy.elements;
+        delete copy.facets;
 
-        return _.assign(result, serverData);
+        return _.assign(result, copy);
     }
 
     if (!_.isUndefined(context)) {
@@ -2552,7 +2255,7 @@ angular.module('cat.service.i18n')
 
 
 angular.module('cat.service.listDataLoading')
-    .factory('catListDataLoadingService', ['catApiService', '$route', '$q', function CatListDataLoadingService(catApiService, $route, $q) {
+    .factory('catListDataLoadingService', ['catApiService', '$state', '$location', '$q', function CatListDataLoadingService(catApiService, $state, $location, $q) {
         var load = function (endpoint, searchRequest) {
             var deferred = $q.defer();
             endpoint.list(searchRequest).then(
@@ -2588,11 +2291,11 @@ angular.module('cat.service.listDataLoading')
          * @param {Object} [defaultSort={property:'name',isDesc:false}]
          */
         var resolve = function (endpointName, defaultSort) {
-            var searchRequest = new window.cat.SearchRequest($route.current.params);
+            var searchRequest = new window.cat.SearchRequest($location.search());
             if (!defaultSort) {
                 defaultSort = {property: 'name', isDesc: false};
             }
-            if (!!defaultSort && !$route.current.params.sort) {
+            if (!!defaultSort && !$location.search().sort) {
                 searchRequest.sort(defaultSort);
             }
             return load(catApiService[endpointName], searchRequest);
@@ -2613,54 +2316,124 @@ angular.module('cat.service.listDataLoading')
 /**
  * @ngdoc service
  * @description
- * This service provider delegates to the $routeProvider and actually creates 2 separate routes after applying various
+ * This service provider delegates to the $stateProvider and actually creates 2 separate routes after applying various
  * conventions / defaults
  *
- * @param $routeProvider
+ * @param $stateProvider
  * @constructor
  */
-function CatRouteServiceProvider($routeProvider) {
+function CatRouteServiceProvider($stateProvider) {
     var viewNames = [];
+
+    function _getListUrl(baseUrl, name, config) {
+        var listUrl = baseUrl + '/' + window.cat.util.pluralize(name.toLowerCase());
+
+        if (!!config && config.url) {
+            listUrl = baseUrl + '/' + config.url;
+        }
+
+        return listUrl;
+    }
+
+    function _registerAbstractState(url, name) {
+        $stateProvider
+            .state(name, {
+                abstract: true,
+                template: '<ui-view></ui-view>',
+                url: url
+            });
+    }
+
+    function _getStateName(name, config) {
+        if (!!config && !!config.parent) {
+            return config.parent + '.' + name;
+        }
+
+        return name;
+    }
+
+    function _registerDetailState(config, name) {
+        var stateName = _getStateName(name, config);
+        var detailConfig = _getDetailConfig(config, name);
+
+        $stateProvider
+            .state(stateName + '.detail', detailConfig);
+
+        if (!!config && config.additionalViewTemplate === 'tabs') {
+            $stateProvider
+                .state(stateName + '.tab', {
+                    abstract: true,
+                    template: '<ui-view></ui-view>',
+                    url: '/:' + name.toLowerCase() + 'Id'
+                });
+        }
+    }
+
+    function _registerListState(config, name) {
+        var stateName = _getStateName(name, config);
+        var listConfig = _getListConfig(config, name);
+        $stateProvider
+            .state(stateName + '.list', listConfig);
+    }
+
+    function _getDetailConfig(config, name) {
+        return window.cat.util.route.detail(_.assign({name: name}, config));
+    }
+
+    function _getListConfig(config, name) {
+        return window.cat.util.route.list(_.assign({name: name}, config));
+    }
+
+    /**
+     * This function creates route url via convention from the given parameters and passes them (together with the
+     * configuration) to the $stateProvider. The actual route configuration is received by passing the given one
+     * to #window.cat.util.route.detail
+     * @param {string} baseUrl the base url which will be prepended to all routes
+     * @param {string} name the name for which the routes will be created
+     * @param {Object} [config] the config object which wraps the configurations for the list and detail route
+     */
+    this.detailRoute = function (baseUrl, name, config) {
+        var stateName = _getStateName(name, config);
+        viewNames.push(stateName);
+
+        var listUrl = _getListUrl(baseUrl, name, config);
+
+        _registerAbstractState(listUrl, stateName);
+        _registerDetailState(config, name);
+    };
 
     /**
      * This function creates route urls via convention from the given parameters and passes them (together with the
-     * configuration) to the $routeProvider. The actual route configuration is received by passing the given one
+     * configuration) to the $stateProvider. The actual route configuration is received by passing the given one
      * to #window.cat.util.route.list and #window.cat.util.route.detail
      * @param {string} baseUrl the base url which will be prepended to all routes
      * @param {string} name the name for which the routes will be created
      * @param {Object} [config] the config object which wraps the configurations for the list and detail route
      */
     this.listAndDetailRoute = function (baseUrl, name, config) {
-        viewNames.push(name);
-
-
-        var listUrl = baseUrl + '/' + window.cat.util.pluralize(name.toLowerCase());
-
-        if (!!config && config.url) {
-            listUrl = baseUrl + '/' + config.url || listUrl;
+        var stateName = _getStateName(name, config);
+        viewNames.push(stateName);
+        if (_.isUndefined(config)) {
+            config = {};
         }
 
-        var listConfig = !!config ? config.list : {};
-        var detailsConfig = !!config ? config.details : {};
-        var nameConf = {
-            name: name
-        };
+        var listUrl = _getListUrl(baseUrl, name, config);
 
-        $routeProvider
-            .when(listUrl, window.cat.util.route.list(_.assign({}, nameConf, listConfig)))
-            .when(listUrl + '/:id', window.cat.util.route.detail(_.assign({}, nameConf, detailsConfig)));
+        _registerAbstractState(listUrl, stateName);
+        _registerDetailState(config.details, name);
+        _registerListState(config.list, name);
     };
 
     /**
      * This service simply exposes the created view and endpoint names, as the provider basically only delegates
-     * to the $routeProvider
+     * to the $stateProvider
      * @return {Array} the registered view names
      */
     this.$get = function () {
         return viewNames;
     };
 }
-CatRouteServiceProvider.$inject = ["$routeProvider"];
+CatRouteServiceProvider.$inject = ["$stateProvider"];
 
 
 angular.module('cat.service.route').provider('catRouteService', CatRouteServiceProvider);
@@ -2868,14 +2641,14 @@ angular.module('cat.service.loading')
             }
         };
 
-        $rootScope.$on('$routeChangeStart', function (event) {
+        $rootScope.$on('$stateChangeStart', function (event) {
             start();
 
         });
-        $rootScope.$on('$routeChangeSuccess', function (event) {
+        $rootScope.$on('$stateChangeSuccess', function (event) {
             stop();
         });
-        $rootScope.$on('$routeChangeError', function (event) {
+        $rootScope.$on('$stateChangeError', function (event) {
             stop();
         });
 
@@ -3142,9 +2915,305 @@ angular.module('cat.service.message').service('$globalMessages', ["$rootScope", 
         }
     };
 
-    $rootScope.$on('$routeChangeSuccess', function () {
+    $rootScope.$on('$stateChangeSuccess', function () {
         self.clearMessages();
     });
 }]);
 
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
+
+var toLowerCaseName = function (name) {
+    if (!name) {
+        return '';
+    }
+    return name.toLowerCase();
+};
+
+/**
+ * Helper function to extract the base url from the current route and the parent endpoints
+ * @param $location The $location service holding the current path + params
+ * @param $stateParams The $stateParams service holding all params of the requested state
+ * @param {string} [baseUrl]
+ * @return {string} the extracted baseUrl which is either the provided one, or one, generated from the parentEndpointNames
+ */
+var getBaseUrl = function ($location, $stateParams, baseUrl) {
+    if (!_.isUndefined(baseUrl)) {
+        return baseUrl;
+    }
+
+    var path = $location.path();
+    if (_.isUndefined($stateParams.id)) {
+        return path;
+    }
+
+    return path.substring(0, path.lastIndexOf('/'));
+};
+
+/**
+ * A helper function for list routes which applies a few optimizations and some auto configuration.
+ * In the current state it handles 4 settings:
+ * * templateUrl - Auto-generation of the correct templateUrl based on conventions and the config.name property
+ * * controller - Auto-generation of the correct controller based on conventions and the config.name property
+ * * reloadOnSearch - this property is set to false
+ * * resolve - a object with a 'listData' property is returned which is resolved via the correct endpoint
+ *
+ * @param {Object} config the route config object which will be used to generate the actual route configuration
+ * @return {{reloadOnSearch: boolean, controller: string, templateUrl: (string), resolve: {config: Object}}}
+ */
+var listRoute = function (config) {
+    var name = toLowerCaseName(config.name);
+
+    function getListDataPromise(catListDataLoadingService) {
+        return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
+    }
+
+    function getResolvedConfig($q, $stateParams, $location, catListDataLoadingService) {
+        var deferredConfig = $q.defer();
+        var resolvedConfig = {
+            controller: config.controller || config.name + 'Controller',
+            baseUrl: getBaseUrl($location, $stateParams, config.baseUrl),
+            title: window.cat.util.pluralize(config.name),
+            searchProps: config.searchProps || window.cat.util.defaultListSearchProps,
+            listTemplateUrl: config.listTemplateUrl || (name + '/' + name + '-list.tpl.html')
+        };
+
+        getListDataPromise(catListDataLoadingService).then(
+            function (listData) {
+                resolvedConfig.listData = listData;
+                deferredConfig.resolve(resolvedConfig);
+            }
+        );
+
+        return deferredConfig.promise;
+    }
+
+    return {
+        url: config.url || '',
+        reloadOnSearch: false,
+        controller: 'CatBaseListController',
+        controllerAs: 'catBaseListController',
+        templateUrl: config.templateUrl || 'template/cat-base-list.tpl.html',
+        resolve: {
+            config: getResolvedConfig
+        }
+    };
+};
+
+/**
+ * A helper function for detail routes which applies a few optimizations and some auto configuration.
+ * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
+ * 'template/cat-base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
+ * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
+ * object which pre-loads all the necessary data.
+ * @param {Object} config the route config object which will be used to generate the actual route configuration
+ * @returns {{templateUrl: (string), controller: string, reloadOnSearch: (boolean), resolve: {config: (object)}}}
+ */
+var detailRoute = function (config) {
+    var endpointName, parentEndpointNames;
+
+    if (_.isString(config.endpoint)) {
+        endpointName = config.endpoint;
+    } else if (_.isObject(config.endpoint)) {
+        parentEndpointNames = config.endpoint.parents;
+        endpointName = config.endpoint.name;
+    } else {
+        endpointName = toLowerCaseName(config.name);
+    }
+
+    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
+
+    var parentUrl = '';
+    var parentTemplateNamePrefix = '';
+
+
+    if (_.isArray(parentEndpointNames)) {
+        _.forEach(parentEndpointNames, function (parentEndpointName) {
+            parentUrl += parentEndpointName;
+            parentUrl += '/';
+
+            parentTemplateNamePrefix += parentEndpointName;
+            parentTemplateNamePrefix += '-';
+        });
+    }
+
+    var tabs;
+
+    var templateUrls = {
+        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
+        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
+    };
+
+    if (config.additionalViewTemplate === true) {
+        templateUrls.view = {
+            main: templateUrls.view,
+            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
+        };
+    } else if (config.additionalViewTemplate === 'tabs') {
+        templateUrls.view = {
+            main: templateUrls.view,
+            additional: 'template/cat-base-additional-details-tabs-view.tpl.html'
+        };
+        tabs = config.additionalViewTemplateTabs;
+    }
+
+    function getEndpoint($stateParams, catApiService) {
+        var endpoint = catApiService[endpointName];
+
+        if (_.isArray(parentEndpointNames)) {
+            _.forEach(parentEndpointNames, function (parentEndpointName, idx) {
+                var currentEndpoint;
+                if (idx === 0) {
+                    // root api endpoint
+                    currentEndpoint = catApiService[parentEndpointName];
+                } else {
+                    // child api endpoint
+                    currentEndpoint = endpoint[parentEndpointName];
+                }
+                endpoint = currentEndpoint.res($stateParams[parentEndpointName + 'Id']);
+            });
+
+            endpoint = endpoint[endpointName];
+        }
+
+        return endpoint;
+    }
+
+    function getDetailData($stateParams, $q, endpoint) {
+        var detailPromise;
+        var detailId = $stateParams.id;
+        if (detailId === 'new') {
+            detailPromise = $q.when(new Model());
+        } else {
+            detailPromise = endpoint.get(detailId);
+        }
+        return detailPromise;
+    }
+
+    function getConfig($location, $stateParams, $q, catApiService) {
+        var deferred = $q.defer();
+        var endpoint = getEndpoint($stateParams, catApiService);
+
+        var baseUrl = getBaseUrl($location, $stateParams, config.baseUrl);
+
+        var resolvedConfig = {
+            controller: config.controller || config.name + 'DetailsController',
+            endpoint: endpoint,
+            Model: Model,
+            templateUrls: templateUrls,
+            tabs: tabs,
+            baseUrl: baseUrl
+        };
+
+
+        var detailPromise = getDetailData($stateParams, $q, endpoint);
+        detailPromise.then(function (data) {
+            resolvedConfig.detail = data;
+        });
+
+        var parentsPromise = getParentInfo($q, endpoint);
+        parentsPromise.then(function (parents) {
+            resolvedConfig.parents = parents;
+        });
+
+        $q.all([detailPromise, parentsPromise]).then(
+            function () {
+                deferred.resolve(resolvedConfig);
+            },
+            function (reason) {
+                deferred.reject(reason);
+            }
+        );
+
+        return deferred.promise;
+    }
+
+    function getParentInfo($q, endpoint) {
+        if (!_.isUndefined(endpoint) && !_.isUndefined(endpoint.parentInfo)) {
+            var deferred = $q.defer();
+            var parents = [];
+            endpoint.parentInfo().then(
+                function (parent) {
+                    parents.push(parent);
+                    getParentInfo($q, endpoint.parentEndpoint).then(
+                        function (response) {
+                            parents.push(response);
+                            parents = _.flatten(parents);
+                            deferred.resolve(parents);
+                        },
+                        function (error) {
+                            deferred.reject(error);
+                        }
+                    );
+                }, function (error) {
+                    deferred.reject(error);
+                });
+            return deferred.promise;
+        } else {
+            return $q.when([]);
+        }
+    }
+
+    return {
+        url: config.url || '/:id',
+        templateUrl: config.templateUrl || 'template/cat-base-detail.tpl.html',
+        controller: 'CatBaseDetailController',
+        reloadOnSearch: config.reloadOnSearch,
+        resolve: {
+            config: getConfig
+        }
+    };
+};
+
+window.cat.util.route = {
+    list: listRoute,
+    detail: detailRoute
+};
 //# sourceMappingURL=cat-angular.js.map
