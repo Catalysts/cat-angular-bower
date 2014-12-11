@@ -356,14 +356,12 @@ function CatBaseDetailController($scope, $stateParams, $location, $window, $glob
     /**
      * reloads the current object from the server
      */
-    var reload = function () {
+    $scope.reloadDetails = function () {
         endpoint.get($stateParams.id).then(function (data) {
             $scope.detail = data;
             update();
         });
     };
-
-    $scope.reloadDetails = reload;
 
     $scope.exists = !!$stateParams.id && $stateParams.id !== 'new';
 
@@ -453,21 +451,6 @@ function CatBaseDetailController($scope, $stateParams, $location, $window, $glob
         });
     };
 
-    if ($scope.exists) {
-        if (_.isUndefined($scope.detail)) {
-            reload();
-        } else {
-            update();
-        }
-    } else {
-        if (_.isUndefined($scope.detail)) {
-            $scope.add();
-        } else {
-            $scope.edit();
-        }
-    }
-
-
     // TABS
     $scope.baseTabsController = ['$scope', function ($tabsScope) {
         $controller('CatBaseTabsController', {
@@ -486,6 +469,12 @@ function CatBaseDetailController($scope, $stateParams, $location, $window, $glob
         });
     } catch (unused) {
         $log.info('Couldn\'t instantiate controller with name ' + config.controller);
+    }
+
+    if ($scope.exists) {
+        update();
+    } else {
+        $scope.edit();
     }
 }
 CatBaseDetailController.$inject = ["$scope", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catBreadcrumbsService", "config"];
