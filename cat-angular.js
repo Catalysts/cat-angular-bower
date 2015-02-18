@@ -1081,10 +1081,6 @@ angular.module('cat.directives.paginated')
                     }
                 }, true);
 
-                $scope.$on('SearchChanged', function (event, value, delay) {
-                    searchChanged(value, delay);
-                });
-
                 function updateLocation() {
                     if ($scope.syncLocation !== false) {
                         searchRequest.setSearch($location);
@@ -1108,7 +1104,7 @@ angular.module('cat.directives.paginated')
                 var updateSearch = function (value) {
                     var search = searchRequest.search();
                     _.assign(search, value);
-                    $rootScope.$broadcast('SearchChanged', search, DELAY_ON_SEARCH);
+                    searchChanged(value, DELAY_ON_SEARCH);
                 };
 
                 $scope.$watch('listData.search', updateSearch, true);
@@ -1401,24 +1397,6 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
-
-angular.module('cat.filters.replaceText')
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1446,6 +1424,24 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
     'cc.catalysts.general.new': 'New'
 });
+
+
+angular.module('cat.filters.replaceText')
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
 
 
 
