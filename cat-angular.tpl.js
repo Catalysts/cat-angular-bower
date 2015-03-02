@@ -45,7 +45,7 @@ module.run(['$templateCache', function($templateCache) {
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
-    '            <a ng-href="#{{baseUrl}}/new" class="btn btn-xs btn-default" cat-activate-on-shortcut="alt+n"><span\n' +
+    '            <a ui-sref="{{config.name}}.detail({id: \'new\'})" class="btn btn-xs btn-default"><span\n' +
     '                    class="glyphicon glyphicon-plus"></span>\n' +
     '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
@@ -71,6 +71,7 @@ module.run(['$templateCache', function($templateCache) {
     '            <span cat-i18n="cc.catalysts.general.save">Save</span>\n' +
     '        </button>\n' +
     '    </div>\n' +
+    '    </div>\n' +
     '</div>\n' +
     '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
     '     ng-controller="baseTabsController"></div>');
@@ -87,7 +88,7 @@ module.run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-list.tpl.html',
     '<h2>\n' +
     '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
-    '    <a ng-href="{{catBaseListController.getUrlForNewPage()}}" class="btn btn-primary pull-right">\n' +
+    '    <a class="btn btn-primary pull-right" ui-sref="{{catBaseListController.config.name}}.detail({id: \'new\'})">\n' +
     '        <span class="glyphicon glyphicon-plus"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
     '    </a>\n' +
     '</h2>\n' +
