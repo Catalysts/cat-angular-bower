@@ -713,39 +713,6 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, con
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "config"];
 'use strict';
 
-
-angular.module('cat.filters.replaceText')
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-.filter('replaceText', function CatReplaceTetFilter() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === undefined)
-            pattern = '\n';
-        if (options === undefined)
-            options = 'g';
-        if (replacement === undefined)
-            replacement = ', ';
-        if (!text) {
-            return text;
-        } else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
-});
-
-'use strict';
-
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -1529,6 +1496,39 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
+'use strict';
+
+
+angular.module('cat.filters.replaceText')
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+.filter('replaceText', function CatReplaceTetFilter() {
+    return function (text, pattern, options, replacement) {
+        if (pattern === undefined)
+            pattern = '\n';
+        if (options === undefined)
+            options = 'g';
+        if (replacement === undefined)
+            replacement = ', ';
+        if (!text) {
+            return text;
+        } else {
+            return String(text).replace(new RegExp(pattern, options), replacement);
+        }
+    };
+});
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1881,6 +1881,29 @@ function CatApiServiceProvider() {
          */
             function $getCatApiService($http, catConversionService) {
             var catApiService = {};
+
+            var dynamicEndpoints = {};
+
+            /**
+             * This method allows to define (dynamic) endpoints after the configuration phase.
+             * @param {string} name (optional the name of the api endpoint to create or retrieve the configuration for
+             * @param {object} [settings] if given a new {EndpointConfig} will be created with the given settings
+             * @returns {CatApiEndpoint}
+             */
+            catApiService.dynamicEndpoint = function (name, settings) {
+                if (typeof name === 'object' && _.isUndefined(settings)) {
+                    settings = name;
+                    name = settings.url;
+                }
+                if (_.isUndefined(dynamicEndpoints[name])) {
+                    if(_.isUndefined(settings)){
+                        throw new Error('Undefined dynamic endpoint settings');
+                    }
+                    dynamicEndpoints[name] = new CatApiEndpoint(_urlPrefix,
+                        new EndpointConfig(name, settings), $http, catConversionService);
+                }
+                return dynamicEndpoints[name];
+            };
 
             _.forEach(_.keys(_endpoints), function (path) {
                 catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http, catConversionService);
