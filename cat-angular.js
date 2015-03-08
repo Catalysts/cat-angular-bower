@@ -5,8 +5,9 @@ angular.module('cat.filters', ['cat.filters.replaceText']);
 
 angular.module('cat.template', ['ui.bootstrap.tpls']);
 
+angular.module('cat.service.search', []);
 angular.module('cat.service.conversion', []);
-angular.module('cat.service.api', ['cat.service.conversion']);
+angular.module('cat.service.api', ['cat.service.conversion', 'cat.service.search']);
 angular.module('cat.service.breadcrumbs', []);
 angular.module('cat.service.i18n', []);
 angular.module('cat.service.listDataLoading', ['cat.service.api']);
@@ -29,7 +30,8 @@ angular.module('cat.service', [
     'cat.service.loading',
     'cat.service.httpIntercept',
     'cat.service.menu',
-    'cat.service.message'
+    'cat.service.message',
+    'cat.service.search'
 ]);
 
 angular.module('cat.directives.autofocus', []);
@@ -46,7 +48,8 @@ angular.module('cat.directives.i18n', ['cat.service.i18n']);
 angular.module('cat.directives.paginated', [
     'ui.bootstrap.pagination',
     'cat.service.listDataLoading',
-    'cat.service.i18n'
+    'cat.service.i18n',
+    'cat.service.search'
 ]);
 angular.module('cat.directives.facets', ['cat.directives.paginated']);
 angular.module('cat.directives.sortable', ['cat.directives.paginated']);
@@ -157,6 +160,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
     };
     var _sort = {};
     var _search = {};
+    var _dirty = false;
 
     var lastEncoded;
 
@@ -212,6 +216,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
             return _pagination;
         } else {
             _pagination = pagination;
+            _dirty = true;
             return _pagination;
         }
     };
@@ -226,6 +231,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
             return _sort;
         } else {
             _sort = sort;
+            _dirty = true;
             return _sort;
         }
     };
@@ -239,11 +245,14 @@ window.cat.SearchRequest = function (searchUrlParams) {
             return _search;
         } else {
             _search = search;
+            _dirty = true;
             return _search;
         }
     };
 
     /**
+     * @deprecated use catSearchService#encodeAsUrl instead
+     *
      * @returns {String} a string representation of the current SearchRequest which can be used as part of the request
      * url
      */
@@ -252,14 +261,20 @@ window.cat.SearchRequest = function (searchUrlParams) {
         return lastEncoded;
     };
 
+    this.setPristine = function () {
+        _dirty = false;
+    };
+
     /**
      * @returns {boolean} <code>true</code> if something changed since the last time {@link this#urlEncoded} was called
      */
     this.isDirty = function () {
-        return lastEncoded !== urlEndoded();
+        return _dirty;
     };
 
     /**
+     * @deprecated use catSearchService#updateLocation instead
+     *
      * A small helper function to update the current url to correctly reflect all properties set within this
      * SearchRequest
      * @param $location the angular $location service
@@ -1094,7 +1109,7 @@ angular.module('cat.directives.paginated')
                 }
             },
             controllerAs: 'catPaginatedController',
-            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService) {
+            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", "catSearchService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService, catSearchService) {
                 var that = this;
                 var searchTimeout = null, DELAY_ON_SEARCH = 500;
                 var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
@@ -1151,6 +1166,7 @@ angular.module('cat.directives.paginated')
                         if (searchRequest.isDirty()) {
                             catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
                                 function (data) {
+                                    searchRequest.setPristine();
                                     _.assign($scope.listData, data);
                                 }
                             );
@@ -1167,7 +1183,7 @@ angular.module('cat.directives.paginated')
 
                 function updateLocation() {
                     if ($scope.syncLocation !== false) {
-                        searchRequest.setSearch($location);
+                        catSearchService.updateLocation(searchRequest);
                         $location.replace();
                     }
                 }
@@ -1571,7 +1587,7 @@ _.assign(window.cat.i18n.en, {
  * @param {object} catConversionService the catConversionService used to convert from and to server side data
  * @constructor
  */
-function CatApiEndpoint(url, endpointConfig, $http, catConversionService) {
+function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSearchService) {
     var that = this;
 
     var _endpointName = endpointConfig.name;
@@ -1650,7 +1666,11 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService) {
      * @private
      */
     var _getSearchQuery = function (searchRequest) {
-        return !!searchRequest && searchRequest instanceof window.cat.SearchRequest ? '?' + searchRequest.urlEncoded() : '';
+        if (!!searchRequest && searchRequest instanceof window.cat.SearchRequest) {
+            return '?' + catSearchService.encodeAsUrl(searchRequest);
+        }
+
+        return '';
     };
 
     /**
@@ -1875,11 +1895,11 @@ function CatApiServiceProvider() {
     };
 
 
-    this.$get = ['$http', 'catConversionService',
+    this.$get = ['$http', 'catConversionService', 'catSearchService',
         /**
          * @return {object} returns a map from names to CatApiEndpoints
          */
-            function $getCatApiService($http, catConversionService) {
+            function $getCatApiService($http, catConversionService, catSearchService) {
             var catApiService = {};
 
             var dynamicEndpoints = {};
@@ -1896,7 +1916,7 @@ function CatApiServiceProvider() {
                     name = settings.url;
                 }
                 if (_.isUndefined(dynamicEndpoints[name])) {
-                    if(_.isUndefined(settings)){
+                    if (_.isUndefined(settings)) {
                         throw new Error('Undefined dynamic endpoint settings');
                     }
                     dynamicEndpoints[name] = new CatApiEndpoint(_urlPrefix,
@@ -1906,7 +1926,7 @@ function CatApiServiceProvider() {
             };
 
             _.forEach(_.keys(_endpoints), function (path) {
-                catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http, catConversionService);
+                catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http, catConversionService, catSearchService);
             });
 
             return catApiService;
@@ -2400,7 +2420,7 @@ angular.module('cat.service.i18n')
  * @name cat.service.listDataLoading:catListDataLoadingService
  */
 angular.module('cat.service.listDataLoading')
-    .factory('catListDataLoadingService', ['catApiService', '$state', '$location', '$q', function CatListDataLoadingService(catApiService, $state, $location, $q) {
+    .factory('catListDataLoadingService', ['$state', '$location', '$q', 'catApiService', 'catSearchService', function CatListDataLoadingService($state, $location, $q, catApiService, catSearchService) {
         var load = function (endpoint, searchRequest) {
             var deferred = $q.defer();
             endpoint.list(searchRequest).then(
@@ -2436,7 +2456,7 @@ angular.module('cat.service.listDataLoading')
          * @param {Object} [defaultSort={property:'name',isDesc:false}]
          */
         var resolve = function (endpointName, defaultSort) {
-            var searchRequest = new window.cat.SearchRequest($location.search());
+            var searchRequest = catSearchService.fromLocation();
             if (!defaultSort) {
                 defaultSort = {property: 'name', isDesc: false};
             }
@@ -2588,6 +2608,133 @@ function CatRouteServiceProvider($stateProvider) {
     };
 }
 CatRouteServiceProvider.$inject = ["$stateProvider"];
+/**
+ * Created by Thomas on 08/03/2015.
+ */
+
+'use strict';
+
+/**
+ * @ngdoc overview
+ * @name cat.service.search
+ */
+angular.module('cat.service.search')
+/**
+ * @ngdoc service
+ * @name catUrlEncodingService
+ *
+ * @descripton
+ * A small helper service which encapsulates the url encoding of an object.
+ * In it's default version it just delegates to jQuery.param
+ */
+    .service('catUrlEncodingService', function () {
+        this.encodeAsUrl = function (params) {
+            if (!!params && !_.isEmpty(params)) {
+                return $.param(params);
+            }
+
+            return '';
+        };
+    })
+/**
+ * @ngdoc service
+ * @name catSearchService
+ *
+ * @descripton
+ * A helper service which encapsulates several operations which can be performed on a cat.util.SearchRequest
+ */
+    .service('catSearchService', ["$location", "catUrlEncodingService", function ($location, catUrlEncodingService) {
+
+        var _encodeSort = function (_sort) {
+            return (!!_sort.property ? 'sort=' + _sort.property + ':' + ((_sort.isDesc === true || _sort.isDesc === 'true') ? 'desc' : 'asc') : '');
+        };
+
+        var _encodePagination = function (_pagination) {
+            return 'page=' + (!!_pagination.page ? Math.max(0, _pagination.page - 1) : 0) + '&size=' + _pagination.size || 100;
+        };
+        var _encodeSearch = function (_search) {
+            return catUrlEncodingService.encodeAsUrl(_search);
+        };
+
+        var urlEndoded = function (searchRequest) {
+            return _([
+                _encodePagination(searchRequest.pagination()),
+                _encodeSort(searchRequest.sort()),
+                _encodeSearch(searchRequest.search())
+            ]).reduce(_concatenate);
+        };
+
+        var _concatenate = function (result, next) {
+            if (!result) {
+                return next;
+            }
+
+            if (!next) {
+                return result;
+            }
+            return result + '&' + next;
+        };
+
+
+        /**
+         * @ngdoc function
+         * @name encodeAsUrl
+         *
+         * @param searchRequest
+         *
+         * @description
+         * This methods returns an url encoded version of the given search request
+         */
+        this.encodeAsUrl = function (searchRequest) {
+            if (!searchRequest) {
+                return '';
+            }
+
+            return urlEndoded(searchRequest);
+        };
+
+        /**
+         * @ngdoc function
+         * @name updateLocation
+         *
+         * @param searchRequest
+         *
+         * @description
+         * This methods updates the browsers address bar via the $location service to reflect the given SearchRequest
+         */
+        this.updateLocation = function (searchRequest) {
+            if (!searchRequest) {
+                return;
+            }
+
+            var pagination = searchRequest.pagination();
+            var sort = searchRequest.sort();
+            var search = searchRequest.search();
+            var ret = {};
+            ret.page = pagination.page;
+            ret.size = pagination.size;
+            if (!!sort.property) {
+                ret.sort = sort.property;
+                ret.rev = sort.isDesc || false;
+            }
+            _.forEach(_.keys(search), function (s) {
+                ret['search.' + s] = search[s];
+            });
+            $location.search(ret);
+        };
+
+        /**
+         * @ngdoc function
+         * @name fromLocation
+         *
+         * @description
+         * This methods returns a new instance of cat.util.SearchRequest with all parameters set according to the current url search parameters
+         */
+        this.fromLocation = function () {
+            return new cat.util.SearchRequest($location.search());
+        };
+    }]);
+
 'use strict';
 
 angular.module('cat.service.selectConfig').provider('catSelectConfigService', CatSelectConfigServiceProvider);
