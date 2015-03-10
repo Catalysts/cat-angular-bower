@@ -16,7 +16,8 @@ angular.module('cat.service.selectConfig', []);
 angular.module('cat.service.view', ['cat.service.api', 'cat.service.route']);
 angular.module('cat.service.loading', ['angularSpinner']);
 angular.module('cat.service.message', []);
-angular.module('cat.service.httpIntercept', ['cat.service.loading', 'cat.service.message']);
+angular.module('cat.service.validation', ['cat.service.message']);
+angular.module('cat.service.httpIntercept', ['cat.service.loading', 'cat.service.message', 'cat.service.validation']);
 angular.module('cat.service.menu', []);
 angular.module('cat.service', [
     'cat.service.conversion',
@@ -37,7 +38,7 @@ angular.module('cat.service', [
 angular.module('cat.directives.autofocus', []);
 angular.module('cat.directives.checkbox', []);
 angular.module('cat.directives.confirmClick', []);
-angular.module('cat.directives.fieldErrors', []);
+angular.module('cat.directives.fieldErrors', ['cat.service.validation']);
 angular.module('cat.directives.inputs', []);
 angular.module('cat.directives.loadMore', []);
 angular.module('cat.directives.menu', ['cat.service.menu']);
@@ -312,7 +313,6 @@ window.cat.SearchRequest = function (searchUrlParams) {
  * * editTemplate - the url of the edit template
  * * mainViewTemplate - the url of the main view template
  * * additionalViewTemplate - the url of the additional view template if it exists
- * * $fieldErrors - a map of validation errors returned by the server
  *
  * Common functions include:
  * * save - the save function to update / create an object
@@ -330,13 +330,13 @@ window.cat.SearchRequest = function (searchUrlParams) {
  * @param {object} $globalMessages DOCTODO
  * @param {object} $controller DOCTODO
  * @param {object} $log DOCTODO
+ * @param {object} catValidationService DOCTODO
  * @param {object} catBreadcrumbsService DOCTODO
  * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
  */
-function CatBaseDetailController($scope, $state, $stateParams, $location, $window, $globalMessages, $controller, $log, catBreadcrumbsService, config) {
+function CatBaseDetailController($scope, $state, $stateParams, $location, $window, $globalMessages, $controller, $log, catValidationService, catBreadcrumbsService, config) {
     $scope.detail = config.detail;
     $scope.editDetail = undefined;
-    $scope.$fieldErrors = {};
 
     $scope.config = config;
     var endpoint = config.endpoint;
@@ -425,7 +425,6 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         if ($scope.exists) {
             $scope.editDetail = undefined;
             $globalMessages.clearMessages();
-            $scope.$fieldErrors = undefined;
         } else {
             $window.history.back();
         }
@@ -459,7 +458,6 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         // When passing data to an asynchronous method, it makes sense to clone it.
         endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
             $globalMessages.clearMessages();
-            $scope.$fieldErrors = undefined;
             if (stayInEdit){
                 $scope.editDetail = data;
                 // Refresh-Breadcrumb:
@@ -474,20 +472,6 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
                     update();
                 }
             }
-        }, function (response) {
-            if (!response.data.fieldErrors) {
-                $scope.$fieldErrors = undefined;
-                return;
-            }
-            // group by field
-            var fieldErrors = {};
-            _.forEach(response.data.fieldErrors, function (fieldError) {
-                fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                fieldErrors[fieldError.field].push(fieldError.message);
-            });
-
-            $scope.$fieldErrors = fieldErrors;
-            $scope.$broadcast('fieldErrors', fieldErrors);
         });
     };
 
@@ -517,7 +501,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         $scope.edit();
     }
 }
-CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catBreadcrumbsService", "config"];
+CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catValidationService", "catBreadcrumbsService", "config"];
 
 angular.module('cat.controller.base.detail').controller('CatBaseDetailController', CatBaseDetailController);
 'use strict';
@@ -888,10 +872,20 @@ angular.module('cat.directives.fieldErrors')
             replace: 'true',
             restrict: 'E',
             scope: {
-                errors: '=',
                 name: '@'
             },
-            template: '<div class="label label-danger" ng-if="errors[name]"><ul><li ng-repeat="error in errors[name]">{{error}}</li></ul></div>'
+            bindToController: true,
+            controllerAs: 'catFieldErrors',
+            controller: ["$scope", "catValidationService", function CatFieldErrorsController($scope, catValidationService) {
+                this.hasErrors = function() {
+                    return catValidationService.hasFieldErrors($scope.name);
+                };
+
+                this.getErrors = function() {
+                    return catValidationService.getFieldErrors($scope.name);
+                };
+            }],
+            template: '<div class="label label-danger" ng-if="catFieldErrors.hasErrors()"><ul><li ng-repeat="error in catFieldErrors.getErrors()">{{error}}</li></ul></div>'
         };
     });
 'use strict';
@@ -973,7 +967,6 @@ angular.module('cat.directives.inputs')
             restrict: 'A',
             transclude: true,
             scope: {
-                errors: '=',
                 label: '@',
                 name: '@'
             },
@@ -1512,6 +1505,34 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 'use strict';
 
 
@@ -1543,34 +1564,6 @@ angular.module('cat.filters.replaceText')
             return String(text).replace(new RegExp(pattern, options), replacement);
         }
     };
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
 });
 
 'use strict';
@@ -2621,7 +2614,8 @@ CatRouteServiceProvider.$inject = ["$stateProvider"];
 angular.module('cat.service.search')
 /**
  * @ngdoc service
- * @name catUrlEncodingService
+ * @name cat.service.search:catUrlEncodingService
+ * @module cat.service.search
  *
  * @descripton
  * A small helper service which encapsulates the url encoding of an object.
@@ -2638,10 +2632,11 @@ angular.module('cat.service.search')
     })
 /**
  * @ngdoc service
- * @name catSearchService
+ * @name cat.service.search:catSearchService
+ * @module cat.service.search
  *
  * @descripton
- * A helper service which encapsulates several operations which can be performed on a cat.util.SearchRequest
+ * A helper service which encapsulates several operations which can be performed on a cat.SearchRequest
  */
     .service('catSearchService', ["$location", "catUrlEncodingService", function ($location, catUrlEncodingService) {
 
@@ -2679,8 +2674,9 @@ angular.module('cat.service.search')
         /**
          * @ngdoc function
          * @name encodeAsUrl
+         * @methodOf cat.service.search:catSearchService
          *
-         * @param searchRequest
+         * @param {Object} searchRequest DOCTODO
          *
          * @description
          * This methods returns an url encoded version of the given search request
@@ -2696,8 +2692,9 @@ angular.module('cat.service.search')
         /**
          * @ngdoc function
          * @name updateLocation
+         * @methodOf cat.service.search:catSearchService
          *
-         * @param searchRequest
+         * @param {Object} searchRequest DOCTODO
          *
          * @description
          * This methods updates the browsers address bar via the $location service to reflect the given SearchRequest
@@ -2726,12 +2723,13 @@ angular.module('cat.service.search')
         /**
          * @ngdoc function
          * @name fromLocation
+         * @methodOf cat.service.search:catSearchService
          *
          * @description
-         * This methods returns a new instance of cat.util.SearchRequest with all parameters set according to the current url search parameters
+         * This methods returns a new instance of cat.SearchRequest with all parameters set according to the current url search parameters
          */
         this.fromLocation = function () {
-            return new cat.util.SearchRequest($location.search());
+            return new cat.SearchRequest($location.search());
         };
     }]);
 
@@ -2784,6 +2782,71 @@ function CatSelectConfigService(configs) {
         return assignDeep(_.clone(config) || {}, options);
     };
 }
+'use strict';
+
+/**
+ * @ngdoc overview
+ * @name cat.service.validation
+ *
+ * @descripton
+ * module wrapping the validation logic
+ */
+angular.module('cat.service.validation')
+/**
+ * @ngdoc object
+ * @name cat.service.validation:catValidations
+ *
+ * @description
+ * value holding 'global' and 'field' errors
+ */
+    .value('catValidations', {fieldErrors: {}})
+
+/**
+ * @ngdoc service
+ * @name cat.service.validation:catValidationService
+ *
+ * @description
+ * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client
+ */
+    .service('catValidationService', ["$rootScope", "$globalMessages", "catValidations", function CatErrorHttpInterceptor($rootScope, $globalMessages, catValidations) {
+        this.updateFromRejection = function (rejection) {
+            delete catValidations.global;
+
+            if (!!rejection.data.globalErrors) {
+                catValidations.global = rejection.data.error;
+                $globalMessages.addMessages('error', rejection.data.globalErrors);
+            }
+
+            var fieldErrors = catValidations.fieldErrors = {};
+
+            if (!!rejection.data.fieldErrors) {
+                // group by field
+                _.forEach(rejection.data.fieldErrors, function (fieldError) {
+                    fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
+                    fieldErrors[fieldError.field].push(fieldError.message);
+                });
+                $rootScope.$on('fieldErrors', fieldErrors);
+            }
+
+        };
+
+        this.hasGlobalErrors = function() {
+            return !!catValidations.global;
+        };
+
+        this.getGlobalErrors = function() {
+            return catValidations.global;
+        };
+
+        this.hasFieldErrors = function(fieldName) {
+            return !!catValidations.fieldErrors[fieldName];
+        };
+
+        this.getFieldErrors = function(fieldName) {
+            return catValidations.fieldErrors[fieldName];
+        };
+    }]);
+
 'use strict';
 
 angular.module('cat.service.view').provider('catViewService', CatViewServiceProvider);
@@ -2858,7 +2921,7 @@ angular.module('cat.service.httpIntercept')
  * @name cat.service.httpIntercept:errorHttpInterceptor
  */
 
-    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", function CatErrorHttpInterceptor($q, $globalMessages, loadingService) {
+    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "catValidationService", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, catValidationService) {
         return {
             'request': function (config) {
                 loadingService.start();
@@ -2883,9 +2946,8 @@ angular.module('cat.service.httpIntercept')
                     }
                     $globalMessages.addMessage('error', error);
                 }
-                if (!!rejection.data.globalErrors) {
-                    $globalMessages.addMessages('error', rejection.data.globalErrors);
-                }
+
+                catValidationService.updateFromRejection(rejection);
 
                 return $q.reject(rejection);
             }
