@@ -13,7 +13,8 @@ angular.module('cat.service.i18n', []);
 angular.module('cat.service.listDataLoading', ['cat.service.api']);
 angular.module('cat.service.route', ['ui.router']);
 angular.module('cat.service.selectConfig', []);
-angular.module('cat.service.view', ['cat.service.api', 'cat.service.route']);
+angular.module('cat.service.view.config', ['cat.service.api']);
+angular.module('cat.service.view', ['cat.service.api', 'cat.service.route', 'cat.service.view.config']);
 angular.module('cat.service.loading', ['angularSpinner']);
 angular.module('cat.service.message', []);
 angular.module('cat.service.validation', ['cat.service.message']);
@@ -95,8 +96,10 @@ angular.module('cat', [
 window.cat = window.cat || {};
 
 /**
- * @ngdoc overview
- * @name FacetTerm
+ /**
+ * @ngdoc function
+ * @name cat.FacetTerm
+ * @module cat
  *
  * @description
  * A 'FacetTerm' model used in conjunction with the cat-paginated directive where it represents a value of a group or
@@ -141,8 +144,9 @@ window.cat.Facet = function (data) {
 window.cat = window.cat || {};
 
 /**
- * @ngdoc overview
- * @name SearchRequest
+ * @ngdoc function
+ * @name cat.SearchRequest
+ * @module cat
  *
  * @description
  * A 'SearchRequest' model used by the catApiService to provide the backend with certain filter, order, page and size
@@ -299,6 +303,7 @@ window.cat.SearchRequest = function (searchUrlParams) {
 /**
  * @ngdoc controller
  * @name cat.controller.base.detail:CatBaseDetailController
+ * @module cat.controller.base.detail
  *
  * @description
  * The CatBaseDetailController takes care of providing several common properties and functions to the scope
@@ -340,7 +345,6 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
 
     $scope.config = config;
     var endpoint = config.endpoint;
-    var baseUrl = config.baseUrl;
     var templateUrls = config.templateUrls;
     var Model = config.Model;
 
@@ -363,8 +367,6 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
     } else {
         $scope.mainViewTemplate = templateUrls.view;
     }
-
-    $scope.baseUrl = baseUrl;
 
     /**
      * @returns {String|Number} A title of the current object or the 'id' as fallback
@@ -421,6 +423,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
      * is active
      */
     $scope.cancelEdit = function () {
+        catValidationService.clearValidationErrors();
         $scope.$broadcast('formReset');
         if ($scope.exists) {
             $scope.editDetail = undefined;
@@ -431,15 +434,15 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
     };
 
     /**
-     * Calls the remove function of the current endpoint and redirects to the given baseUrl upon success
+     * Calls the remove function of the current endpoint and redirects to the ^.list upon success
      */
     $scope.remove = function () {
         endpoint.remove($scope.detail.id).then(function () {
             if (_.isEmpty($scope.uiStack)) {
                 $state.go('^.list');
             } else {
-                var parentUrl = $scope.uiStack[$scope.uiStack.length - 1].url;
-                $location.path(parentUrl.substring(1, parentUrl.indexOf('?')));
+                var url = $state.href('^.^');
+                $location.url(url.substring(1, url.length));
                 $location.search('tab', endpoint.getEndpointName());
             }
         });
@@ -458,6 +461,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         // When passing data to an asynchronous method, it makes sense to clone it.
         endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
             $globalMessages.clearMessages();
+            catValidationService.clearValidationErrors();
             if (stayInEdit){
                 $scope.editDetail = data;
                 // Refresh-Breadcrumb:
@@ -506,11 +510,11 @@ CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$locatio
 angular.module('cat.controller.base.detail').controller('CatBaseDetailController', CatBaseDetailController);
 'use strict';
 
-angular.module('cat.controller.base.list')
 
 /**
  * @ngdoc controller
  * @name cat.controller.base.list:CatBaseListController
+ * @module cat.controller.base.list
  *
  * @description
  * The CatBaseListController takes care of providing several common properties to the scope
@@ -525,16 +529,14 @@ angular.module('cat.controller.base.list')
  * * config - the config object used to instantiate this view
  *
  * @param {object} $scope scope
+ * @param {object} $state state service
  * @param {object} $controller controller
  * @param {object} $log log
  * @param {object} catBreadcrumbsService catBreadcrumbsService
  * @param {object} catListDataLoadingService catListDataLoadingService
  * @param {object} config holds data like the listData object, the template url, base url, the model constructor, etc.
  */
-    .controller('CatBaseListController',
-    ['$scope', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
-
-function CatBaseListController($scope, $controller, $log, catBreadcrumbsService, catListDataLoadingService, config) {
+function CatBaseListController($scope, $state, $controller, $log, catBreadcrumbsService, catListDataLoadingService, config) {
     if (!_.isUndefined(config.listData)) {
         this.titleKey = 'cc.catalysts.cat-breadcrumbs.entry.' + config.listData.endpoint.getEndpointName();
 
@@ -555,7 +557,8 @@ function CatBaseListController($scope, $controller, $log, catBreadcrumbsService,
     this.config = config;
 
     this.getUrlForId = function (id) {
-        return '#' + config.baseUrl + '/' + id;
+        $log.warn('use ui-sref directly - this method will be removed in the near future');
+        return $state.href('^.detail', {id: id});
     };
 
     this.getUrlForNewPage = function () {
@@ -581,14 +584,27 @@ function CatBaseListController($scope, $controller, $log, catBreadcrumbsService,
     }
 }
 
-'use strict';
 
-angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
+angular.module('cat.controller.base.list')
+    .controller('CatBaseListController',
+    ['$scope', '$state', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
+
+'use strict';
 
 /**
  * @ngdoc controller
  * @name cat.controller.base.tabs:CatBaseTabsController
+ * @module cat.controller.base.tabs
  *
+ * @description
+ * The base code for handling sub entites (as tabs).
+ * Includes the instantiation of one controller per tab/list and lazy loading of the approrpiate data
+ *
+ * @param {Object} $scope The angular scope
+ * @param {Object} $controller The angular $controller service
+ * @param {Object} $stateParams The ui-router $stateParams service
+ * @param {Object} $location The angular $location service
+ * @param {Object} config The config as handled by state resolve
  */
 function CatBaseTabsController($scope, $controller, $stateParams, $location, config) {
     var endpoint = config.endpoint;
@@ -710,6 +726,8 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, con
     }];
 }
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "config"];
+
+angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
 /**
@@ -1148,15 +1166,14 @@ angular.module('cat.directives.paginated')
                     _loadPaginationTranslations();
                 });
 
-
                 $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
 
                 var searchRequest = $scope.listData.searchRequest;
 
-                var reload = function (delay) {
+                var reload = function (delay, force) {
                     $timeout.cancel(searchTimeout);
                     searchTimeout = $timeout(function () {
-                        if (searchRequest.isDirty()) {
+                        if (searchRequest.isDirty() || !!force) {
                             catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
                                 function (data) {
                                     searchRequest.setPristine();
@@ -1166,6 +1183,10 @@ angular.module('cat.directives.paginated')
                         }
                     }, delay || 0);
                 };
+
+                $rootScope.$on('cat-paginated-refresh', function () {
+                    reload(0, true);
+                });
 
                 $scope.$watch('listData.sort', function (newVal) {
                     if (!!newVal) {
@@ -1505,34 +1526,6 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
-});
-
 'use strict';
 
 
@@ -1566,6 +1559,83 @@ angular.module('cat.filters.replaceText')
     };
 });
 
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 'use strict';
 
 /**
@@ -1578,6 +1648,7 @@ angular.module('cat.filters.replaceText')
  * @param {object} endpointConfig the configuration of this endpoint - holds properties like name, url, the model and children
  * @param {object} $http the angular $http service which handles the actual xhr requests
  * @param {object} catConversionService the catConversionService used to convert from and to server side data
+ * @param {object} catSearchService the catSearchService for handling all operations concerning cat.uitl.SearchRequest objects
  * @constructor
  */
 function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSearchService) {
@@ -1598,7 +1669,7 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
         var url = _endpointUrl + '/' + id + '/';
         var ret = {};
         _.forEach(_.keys(_childEndpointSettings), function (path) {
-            ret[path] = new CatApiEndpoint(url, _childEndpointSettings[path], $http, catConversionService);
+            ret[path] = new CatApiEndpoint(url, _childEndpointSettings[path], $http, catConversionService, catSearchService);
             ret[path].parentEndpoint = that;
             ret[path].parentId = id;
             ret[path].parentInfo = function () {
@@ -1913,7 +1984,7 @@ function CatApiServiceProvider() {
                         throw new Error('Undefined dynamic endpoint settings');
                     }
                     dynamicEndpoints[name] = new CatApiEndpoint(_urlPrefix,
-                        new EndpointConfig(name, settings), $http, catConversionService);
+                        new EndpointConfig(name, settings), $http, catConversionService, catSearchService);
                 }
                 return dynamicEndpoints[name];
             };
@@ -1941,10 +2012,10 @@ angular.module('cat.service.api').provider('catApiService', CatApiServiceProvide
 /**
  * @ngdoc service
  * @name cat.service.api:$api
- * @deprectaed use '$api'
+ * @deprecated use 'catApiService'
  *
  * @description
- * deprectaed use '$api'
+ * deprecated use 'catApiService'
  * The CatApiServiceProvider exposes a single configuration method 'endpoint' which can be used to create or retrieve
  * named endpoint configurations.
  *
@@ -1955,13 +2026,6 @@ angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
 
 'use strict';
 
-angular.module('cat.service.breadcrumbs')
-
-/**
- * @ngdoc overview
- * @name cat.service.breadcrumbs:catBreadcrumbs
- */
-    .value('catBreadcrumbs', [])
 
 /**
  * @ngdoc service
@@ -1975,9 +2039,7 @@ angular.module('cat.service.breadcrumbs')
  *
  * @constructor
  */
-    .service('catBreadcrumbsService', CatBreadcrumbsService);
-
-function CatBreadcrumbsService(catBreadcrumbs) {
+function CatBreadcrumbsService(catBreadcrumbs, $state) {
     var that = this;
 
     this.clear = function () {
@@ -2023,10 +2085,6 @@ function CatBreadcrumbsService(catBreadcrumbs) {
         catBreadcrumbs[catBreadcrumbs.length - 1] = newVal;
     };
 
-    function splitShiftAndJoin(path, amount) {
-        return _.initial(path.split('/'), amount).join('/');
-    }
-
     /**
      * This method auto-generates the breadcrumbs from a given view configuration
      * @param {Object} config a config object as provided to CatBaseDetailController
@@ -2035,51 +2093,61 @@ function CatBreadcrumbsService(catBreadcrumbs) {
     this.generateFromConfig = function (config) {
         that.clear();
         var uiStack = [];
+
         if (!_.isUndefined(config.endpoint.parentEndpoint)) {
             var currentEndpoint = config.endpoint;
             var parentEndpoint = currentEndpoint.parentEndpoint;
-            var parentUrl = config.baseUrl;
             var count = 0;
+            var parentState = '^.^';
 
             while (!_.isUndefined(parentEndpoint)) {
                 var parent = config.parents[count++];
-                parentUrl = splitShiftAndJoin(parentUrl, 1);
 
                 var detailBreadcrumb = {
-                    url: '#' + parentUrl + '?tab=' + currentEndpoint.getEndpointName(),
+                    url: $state.href(parentState) + '?tab=' + currentEndpoint.getEndpointName(),
                     title: parent.name
                 };
                 uiStack.unshift(detailBreadcrumb);
                 that.addFirst(detailBreadcrumb);
 
-                parentUrl = splitShiftAndJoin(parentUrl, 1);
                 var breadcrumb = {
                     title: capitalize(window.cat.util.pluralize(parentEndpoint.getEndpointName())),
-                    key: 'cc.catalysts.cat-breadcrumbs.entry.' + config.endpoint.getEndpointName(),
-                    url: '#' + parentUrl
+                    key: 'cc.catalysts.cat-breadcrumbs.entry.' + parentEndpoint.getEndpointName(),
+                    url: $state.href(parentState+'.^.list')
                 };
                 that.addFirst(breadcrumb);
 
                 currentEndpoint = parentEndpoint;
                 parentEndpoint = currentEndpoint.parentEndpoint;
+
+                parentState += '.^.^';
             }
         } else {
             that.push({
                 title: capitalize(window.cat.util.pluralize(config.endpoint.getEndpointName())),
                 key: 'cc.catalysts.cat-breadcrumbs.entry.' + config.endpoint.getEndpointName(),
-                url: '#' + config.baseUrl
+                url: $state.href('^.list')
             });
         }
         return uiStack;
     };
 }
-CatBreadcrumbsService.$inject = ["catBreadcrumbs"];
+CatBreadcrumbsService.$inject = ["catBreadcrumbs", "$state"];
 
+angular.module('cat.service.breadcrumbs')
+
+/**
+ * @ngdoc overview
+ * @name cat.service.breadcrumbs:catBreadcrumbs
+ */
+    .value('catBreadcrumbs', [])
+    .service('catBreadcrumbsService', CatBreadcrumbsService);
 'use strict';
 
 /**
  * @ngdoc service
- * @name catConversionService
+ * @name cat.service.conversion:catConversionService
+ * @module cat.service.conversion
  *
  * @description
  * This service handles the transformation between server and client side data.
@@ -2150,6 +2218,16 @@ function _convertToClientData(serverData, context) {
 
 
 angular.module('cat.service.conversion')
+/**
+ * @ngdoc object
+ * @name cat.service.conversion:catConversionFunctions
+ * @module cat.service.conversion
+ *
+ * @description
+ * Value holding functions used by {@link cat.service.conversion:catConversionService catConversionService}
+ *
+ * @constructor
+ */
     .value('catConversionFunctions', {
         toClient: _convertToClientData,
         toServer: function (clientData, context) {
@@ -2159,24 +2237,11 @@ angular.module('cat.service.conversion')
     .service('catConversionService', CatConversionService);
 'use strict';
 
-angular.module('cat.service.i18n')
-/**
- * @ngdoc overview
- * @name cat.service.i18n:CAT_I18N_DEFAULT_LOCALE
- * @constant
- *
- * @description
- * The default locale used for message translation
- */
-    .constant('CAT_I18N_DEFAULT_LOCALE', 'de')
-
 /**
  * @ngdoc service
  * @name cat.service.i18n:catI18nLocaleService
+ * @module cat.service.i18n
  */
-    .service('catI18nLocaleService', ['$q', '$locale', 'CAT_I18N_DEFAULT_LOCALE', CatI18nLocaleService]);
-
-
 function CatI18nLocaleService($q, $locale, CAT_I18N_DEFAULT_LOCALE) {
     this.getLanguageOfLocale = function (locale) {
         if (_.isUndefined(locale)) {
@@ -2198,26 +2263,34 @@ function CatI18nLocaleService($q, $locale, CAT_I18N_DEFAULT_LOCALE) {
         return CAT_I18N_DEFAULT_LOCALE;
     };
 }
-'use strict';
 
 angular.module('cat.service.i18n')
+/**
+ * @ngdoc overview
+ * @name cat.service.i18n:CAT_I18N_DEFAULT_LOCALE
+ * @constant
+ *
+ * @description
+ * The default locale used for message translation
+ */
+    .constant('CAT_I18N_DEFAULT_LOCALE', 'de')
+    .service('catI18nLocaleService', ['$q', '$locale', 'CAT_I18N_DEFAULT_LOCALE', CatI18nLocaleService]);
+'use strict';
 
 /**
  * @ngdoc service
  * @name cat.service.i18n:catI18nMessageSourceService
+ * @module cat.service.i18n
  * @service
  *
  * @description
  * A service to retrieve message templates for a given key and locale
  *
- *
  * @param {object} $q DOCTODO
- * @param {object} $$locale DOCTODO
- * @param {string} $CAT_I18N_DEFAULT_LOCALE DOCTODO
+ * @param {object} catI18nLocaleService DOCTODO
+ * @param {string} CAT_I18N_DEFAULT_LOCALE DOCTODO
  * @constructor
  */
-    .service('catI18nMessageSourceService', ['$q', 'catI18nLocaleService', 'CAT_I18N_DEFAULT_LOCALE', CatI18nMessageSourceService]);
-
 function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_LOCALE) {
     function _getLocale(locale) {
         return locale || catI18nLocaleService.getDefaultLocale();
@@ -2238,7 +2311,9 @@ function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_
     }
 
     /**
-     * @name catI18nMessageSourceService#getMessages
+     * @ngdoc function
+     * @name getMessages
+     * @methodOf cat.service.i18n:catI18nMessageSourceService
      * @function
      *
      * @description
@@ -2252,7 +2327,9 @@ function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_
     };
 
     /**
-     * @name catI18nMessageSourceService#getMessage
+     * @ngdoc function
+     * @name getMessage
+     * @methodOf cat.service.i18n:catI18nMessageSourceService
      * @function
      *
      * @description
@@ -2272,7 +2349,9 @@ function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_
 
 
     /**
-     * @name catI18nMessageSourceService#hasMessage
+     * @ngdoc function
+     * @name hasMessage
+     * @methodOf cat.service.i18n:catI18nMessageSourceService
      * @function
      *
      * @description
@@ -2287,6 +2366,9 @@ function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_
         return $q.when(!_.isUndefined(bundle) && !_.isUndefined(bundle[key]));
     };
 }
+
+angular.module('cat.service.i18n')
+    .service('catI18nMessageSourceService', ['$q', 'catI18nLocaleService', 'CAT_I18N_DEFAULT_LOCALE', CatI18nMessageSourceService]);
 
 /**
  * Created by tscheinecker on 21.10.2014.
@@ -2467,28 +2549,13 @@ angular.module('cat.service.listDataLoading')
 
 'use strict';
 
-angular.module('cat.service.route')
-
 /**
  * @ngdoc service
- * @name cat.service.route:catRouteService
+ * @name cat.service.route:catRouteServiceProvider
  * @description
  * This service provider delegates to the $stateProvider and actually creates 2 separate routes after applying various
  * conventions / defaults
  */
-    .provider('catRouteService', CatRouteServiceProvider)
-    
-    .run(["$rootScope", "$log", "$globalMessages", "catBreadcrumbsService", function($rootScope, $log, $globalMessages, catBreadcrumbsService) {
-        $rootScope.$on('$stateChangeError', function() {
-            var exception = arguments[arguments.length - 1];
-            $globalMessages.addMessage('warning', exception);
-            $log.warn(exception);
-        });
-        $rootScope.$on('$stateChangeSuccess', function() {
-            catBreadcrumbsService.clear();
-        });
-    }]);
-
 function CatRouteServiceProvider($stateProvider) {
     var viewNames = [];
 
@@ -2543,18 +2610,70 @@ function CatRouteServiceProvider($stateProvider) {
             .state(stateName + '.list', listConfig);
     }
 
+    /**
+     * A helper function for detail routes which applies a few optimizations and some auto configuration.
+     * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
+     * 'template/cat-base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
+     * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
+     * object which pre-loads all the necessary data.
+     * @param {Object} config the route config object which will be used to generate the actual route configuration
+     * @returns {{templateUrl: (string), controller: string, reloadOnSearch: (boolean), resolve: {config: (object)}}}
+     */
     function _getDetailConfig(config, name) {
-        return window.cat.util.route.detail(_.assign({name: name}, config));
-    }
+        var _config = _.assign({name: name}, config);
 
-    function _getListConfig(config, name) {
-        return window.cat.util.route.list(_.assign({name: name}, config));
+        return {
+            url: _config.url || '/:id',
+            templateUrl: _config.templateUrl || 'template/cat-base-detail.tpl.html',
+            controller: 'CatBaseDetailController',
+            reloadOnSearch: _config.reloadOnSearch,
+            resolve: {
+                config: function($stateParams, catViewConfigService) {
+                    // TODO $stateParams needs to be passed from here because otherwise it's empty...
+                    return catViewConfigService.getDetailConfig(_config, $stateParams);
+                }
+            }
+        };
     }
 
     /**
+     * A helper function for list routes which applies a few optimizations and some auto configuration.
+     * In the current state it handles 4 settings:
+     * * templateUrl - Auto-generation of the correct templateUrl based on conventions and the config.name property
+     * * controller - Auto-generation of the correct controller based on conventions and the config.name property
+     * * reloadOnSearch - this property is set to false
+     * * resolve - a object with a 'listData' property is returned which is resolved via the correct endpoint
+     *
+     * @param {Object} config the route config object which will be used to generate the actual route configuration
+     * @return {{reloadOnSearch: boolean, controller: string, templateUrl: (string), resolve: {config: Object}}}
+     */
+    function _getListConfig(config, name) {
+        var _config = _.assign({name: name}, config);
+
+        return {
+            url: _config.url || '',
+            reloadOnSearch: false,
+            controller: 'CatBaseListController',
+            controllerAs: 'catBaseListController',
+            templateUrl: _config.templateUrl || 'template/cat-base-list.tpl.html',
+            resolve: {
+                config: function(catViewConfigService) {
+                    return catViewConfigService.getListConfig(_config);
+                }
+            }
+        };
+    }
+
+    /**
+     * @ngdoc function
+     * @name detailRoute
+     * @methodOf cat.service.route:catRouteServiceProvider
+     *
+     * @description
      * This function creates route url via convention from the given parameters and passes them (together with the
      * configuration) to the $stateProvider. The actual route configuration is received by passing the given one
      * to #window.cat.util.route.detail
+     *
      * @param {string} baseUrl the base url which will be prepended to all routes
      * @param {string} name the name for which the routes will be created
      * @param {Object} [config] the config object which wraps the configurations for the list and detail route
@@ -2570,9 +2689,15 @@ function CatRouteServiceProvider($stateProvider) {
     };
 
     /**
+     * @ngdoc function
+     * @name detailRoute
+     * @methodOf cat.service.route:catRouteServiceProvider
+     *
+     * @description
      * This function creates route urls via convention from the given parameters and passes them (together with the
      * configuration) to the $stateProvider. The actual route configuration is received by passing the given one
      * to #window.cat.util.route.list and #window.cat.util.route.detail
+     *
      * @param {string} baseUrl the base url which will be prepended to all routes
      * @param {string} name the name for which the routes will be created
      * @param {Object} [config] the config object which wraps the configurations for the list and detail route
@@ -2592,15 +2717,32 @@ function CatRouteServiceProvider($stateProvider) {
     };
 
     /**
+     * @ngdoc service
+     * @name cat.service.route:catRouteService
+     * @module cat.service.route
+     *
+     * @description
      * This service simply exposes the created view and endpoint names, as the provider basically only delegates
      * to the $stateProvider
-     * @return {Array} the registered view names
      */
     this.$get = function () {
         return viewNames;
     };
 }
 CatRouteServiceProvider.$inject = ["$stateProvider"];
+
+angular.module('cat.service.route')
+    .provider('catRouteService', CatRouteServiceProvider)
+    .run(["$rootScope", "$log", "$globalMessages", "catBreadcrumbsService", function($rootScope, $log, $globalMessages, catBreadcrumbsService) {
+        $rootScope.$on('$stateChangeError', function() {
+            var exception = arguments[arguments.length - 1];
+            $globalMessages.addMessage('warning', exception);
+            $log.warn(exception);
+        });
+        $rootScope.$on('$stateChangeSuccess', function() {
+            catBreadcrumbsService.clear();
+        });
+    }]);
 /**
  * Created by Thomas on 08/03/2015.
  */
@@ -2617,7 +2759,7 @@ angular.module('cat.service.search')
  * @name cat.service.search:catUrlEncodingService
  * @module cat.service.search
  *
- * @descripton
+ * @description
  * A small helper service which encapsulates the url encoding of an object.
  * In it's default version it just delegates to jQuery.param
  */
@@ -2633,6 +2775,7 @@ angular.module('cat.service.search')
 /**
  * @ngdoc service
  * @name cat.service.search:catSearchService
+ * @requires cat.service.search:catUrlEncodingService
  * @module cat.service.search
  *
  * @descripton
@@ -2676,7 +2819,7 @@ angular.module('cat.service.search')
          * @name encodeAsUrl
          * @methodOf cat.service.search:catSearchService
          *
-         * @param {Object} searchRequest DOCTODO
+         * @param {cat.SearchRequest} searchRequest the search request to encode as url
          *
          * @description
          * This methods returns an url encoded version of the given search request
@@ -2694,7 +2837,7 @@ angular.module('cat.service.search')
          * @name updateLocation
          * @methodOf cat.service.search:catSearchService
          *
-         * @param {Object} searchRequest DOCTODO
+         * @param {cat.SearchRequest} searchRequest the search request from which to update the $location service
          *
          * @description
          * This methods updates the browsers address bar via the $location service to reflect the given SearchRequest
@@ -2726,7 +2869,7 @@ angular.module('cat.service.search')
          * @methodOf cat.service.search:catSearchService
          *
          * @description
-         * This methods returns a new instance of cat.SearchRequest with all parameters set according to the current url search parameters
+         * This methods returns a new instance of {@link cat.SearchRequest} with all parameters set according to the current url search parameters
          */
         this.fromLocation = function () {
             return new cat.SearchRequest($location.search());
@@ -2735,17 +2878,72 @@ angular.module('cat.service.search')
 
 'use strict';
 
-angular.module('cat.service.selectConfig').provider('catSelectConfigService', CatSelectConfigServiceProvider);
 
+function assignDeep(target, source) {
+    return _.assign(target, source, function (targetProperty, sourceProperty) {
+        if (_.isObject(targetProperty) && _.isObject(sourceProperty)) {
+            return assignDeep(targetProperty, sourceProperty);
+        }
+
+        return sourceProperty;
+    });
+}
 
 /**
  * @ngdoc service
  * @name cat.service.selectConfig:catSelectConfigService
+ * @module cat.service.selectConfig
+ *
+ * @constructor
+ */
+function CatSelectConfigService(configs) {
+    var _configs = configs;
+
+    /**
+     * @ngdoc function
+     * @name getConfig
+     * @method of cat.service.selectConfig:catSelectConfigService
+     *
+     * @description
+     *
+     * @param {String} name the name of the config to retreive
+     * @param {Object} [options] Optional options to use as default values
+     * @returns {*} the named config object (with applied defaults) or undefined
+     */
+    this.getConfig = function (name, options) {
+        var config = configs[name];
+
+        if (_.isUndefined(config) && _.isUndefined(options)) {
+            return undefined;
+        }
+
+        return assignDeep(_.clone(config) || {}, options);
+    };
+}
+
+/**
+ * @ngdoc service
+ * @name cat.service.selectConfig:catSelectConfigServiceProvider
+ * @module cat.service.selectConfig
+ *
+ * @description
+ *
  * @constructor
  */
 function CatSelectConfigServiceProvider() {
     var configs = {};
 
+    /**
+     * @ngdoc function
+     * @name getConfig
+     * @method of cat.service.selectConfig:catSelectConfigServiceProvider
+     *
+     * @description
+     *
+     * @param {String} name the name of the config to save or retrieve
+     * @param {Object} [config] The config to save for the given name or undefined to receive the config
+     * @returns {*} the named config object
+     */
     this.config = function (name, config) {
         if (!_.isUndefined(config)) {
             configs[name] = config;
@@ -2759,29 +2957,7 @@ function CatSelectConfigServiceProvider() {
     };
 }
 
-function assignDeep(target, source) {
-    return _.assign(target, source, function (targetProperty, sourceProperty) {
-        if (_.isObject(targetProperty) && _.isObject(sourceProperty)) {
-            return assignDeep(targetProperty, sourceProperty);
-        }
-
-        return sourceProperty;
-    });
-}
-
-function CatSelectConfigService(configs) {
-    var _configs = configs;
-
-    this.getConfig = function (name, options) {
-        var config = configs[name];
-
-        if (_.isUndefined(config) && _.isUndefined(options)) {
-            return undefined;
-        }
-
-        return assignDeep(_.clone(config) || {}, options);
-    };
-}
+angular.module('cat.service.selectConfig').provider('catSelectConfigService', CatSelectConfigServiceProvider);
 'use strict';
 
 /**
@@ -2830,6 +3006,11 @@ angular.module('cat.service.validation')
 
         };
 
+        this.clearValidationErrors = function() {
+            delete catValidations.global;
+            catValidations.fieldErrors = {};
+        };
+
         this.hasGlobalErrors = function() {
             return !!catValidations.global;
         };
@@ -2847,13 +3028,202 @@ angular.module('cat.service.validation')
         };
     }]);
 
+/**
+ * @author Thomas Scheinecker, Catalysts GmbH.
+ */
+
 'use strict';
 
-angular.module('cat.service.view').provider('catViewService', CatViewServiceProvider);
+function CatViewConfigService($q, catApiService, catListDataLoadingService) {
+    function toLowerCaseName(name) {
+        if (!name) {
+            return '';
+        }
+        return name.toLowerCase();
+    }
+
+    function getDetailData($stateParams, Model, endpoint) {
+        var detailPromise;
+
+        var detailId = $stateParams.id;
+        if (detailId === 'new') {
+            detailPromise = $q.when(new Model());
+        } else {
+            detailPromise = endpoint.get(detailId);
+        }
+        return detailPromise;
+    }
+
+    function getEndpoint(endpointName, parentEndpointNames, $stateParams) {
+        var endpoint = catApiService[endpointName];
+
+        if (_.isArray(parentEndpointNames)) {
+            _.forEach(parentEndpointNames, function (parentEndpointName, idx) {
+                var currentEndpoint;
+                if (idx === 0) {
+                    // root api endpoint
+                    currentEndpoint = catApiService[parentEndpointName];
+                } else {
+                    // child api endpoint
+                    currentEndpoint = endpoint[parentEndpointName];
+                }
+                endpoint = currentEndpoint.res($stateParams[parentEndpointName + 'Id']);
+            });
+
+            endpoint = endpoint[endpointName];
+        }
+
+        return endpoint;
+    }
+
+    function getParentInfo(endpoint) {
+        if (!_.isUndefined(endpoint) && !_.isUndefined(endpoint.parentInfo)) {
+            var deferred = $q.defer();
+            var parents = [];
+            endpoint.parentInfo().then(
+                function (parent) {
+                    parents.push(parent);
+                    getParentInfo($q, endpoint.parentEndpoint).then(
+                        function (response) {
+                            parents.push(response);
+                            parents = _.flatten(parents);
+                            deferred.resolve(parents);
+                        },
+                        function (error) {
+                            deferred.reject(error);
+                        }
+                    );
+                }, function (error) {
+                    deferred.reject(error);
+                });
+            return deferred.promise;
+        } else {
+            return $q.when([]);
+        }
+    }
+
+    this.getDetailConfig = function (config, $stateParams) {
+        var endpointName, parentEndpointNames;
+
+        if (_.isString(config.endpoint)) {
+            endpointName = config.endpoint;
+        } else if (_.isObject(config.endpoint)) {
+            parentEndpointNames = config.endpoint.parents;
+            endpointName = config.endpoint.name;
+        } else {
+            endpointName = toLowerCaseName(config.name);
+        }
+
+        var Model = config.model || window.cat.util.defaultModelResolver(config.name);
+
+        var parentUrl = '';
+        var parentTemplateNamePrefix = '';
+
+
+        if (_.isArray(parentEndpointNames)) {
+            _.forEach(parentEndpointNames, function (parentEndpointName) {
+                parentUrl += parentEndpointName;
+                parentUrl += '/';
+
+                parentTemplateNamePrefix += parentEndpointName;
+                parentTemplateNamePrefix += '-';
+            });
+        }
+
+        var tabs;
+
+        var templateUrls = {
+            edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
+            view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
+        };
+
+        if (config.additionalViewTemplate === true) {
+            templateUrls.view = {
+                main: templateUrls.view,
+                additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
+            };
+        } else if (config.additionalViewTemplate === 'tabs') {
+            templateUrls.view = {
+                main: templateUrls.view,
+                additional: 'template/cat-base-additional-details-tabs-view.tpl.html'
+            };
+            tabs = config.additionalViewTemplateTabs;
+        }
+
+        var deferred = $q.defer();
+        var endpoint = getEndpoint(endpointName, parentEndpointNames, $stateParams);
+
+        var resolvedConfig = {
+            name: config.name,
+            controller: config.controller || config.name + 'DetailsController',
+            endpoint: endpoint,
+            Model: Model,
+            templateUrls: templateUrls,
+            tabs: tabs
+        };
+
+
+        var detailPromise = getDetailData($stateParams, Model, endpoint);
+        detailPromise.then(function (data) {
+            resolvedConfig.detail = data;
+        });
+
+        var parentsPromise = getParentInfo(endpoint);
+        parentsPromise.then(function (parents) {
+            resolvedConfig.parents = parents;
+        });
+
+        $q.all([detailPromise, parentsPromise]).then(
+            function () {
+                deferred.resolve(resolvedConfig);
+            },
+            function (reason) {
+                deferred.reject(reason);
+            }
+        );
+
+        return deferred.promise;
+    };
+
+
+    function getListDataPromise(config, name) {
+        return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
+    }
+
+    this.getListConfig = function(config) {
+        var name = toLowerCaseName(config.name);
+
+        var deferredConfig = $q.defer();
+        var resolvedConfig = {
+            name: config.name,
+            controller: config.controller || config.name + 'Controller',
+            title: window.cat.util.pluralize(config.name),
+            searchProps: config.searchProps || window.cat.util.defaultListSearchProps,
+            listTemplateUrl: config.listTemplateUrl || (name + '/' + name + '-list.tpl.html')
+        };
+
+        getListDataPromise(config, name).then(
+            function (listData) {
+                resolvedConfig.listData = listData;
+                deferredConfig.resolve(resolvedConfig);
+            }
+        );
+
+        return deferredConfig.promise;
+    };
+}
+CatViewConfigService.$inject = ["$q", "catApiService", "catListDataLoadingService"];
+
+angular.module('cat.service.view.config')
+    .service('catViewConfigService', CatViewConfigService);
+
+'use strict';
 
 /**
  * @ngdoc service
  * @name cat.service.view:catViewService
+ * @module cat.service.view
+ *
  * @description
  * This service provider can be used to initialize an api endpoint and the according detail and list routes by simply
  * providing a name and a config object.
@@ -2912,6 +3282,8 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
     };
 }
 CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
+
+angular.module('cat.service.view').provider('catViewService', CatViewServiceProvider);
 'use strict';
 
 angular.module('cat.service.httpIntercept')
@@ -3287,302 +3659,4 @@ angular.module('cat.service.message').service('$globalMessages', ["$rootScope", 
     });
 }]);
 
-/**
- * Created by tscheinecker on 26.08.2014.
- */
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
-
-var toLowerCaseName = function (name) {
-    if (!name) {
-        return '';
-    }
-    return name.toLowerCase();
-};
-
-/**
- * Helper function to extract the base url from the current route and the parent endpoints
- * @param $location The $location service holding the current path + params
- * @param $stateParams The $stateParams service holding all params of the requested state
- * @param {string} [baseUrl]
- * @return {string} the extracted baseUrl which is either the provided one, or one, generated from the parentEndpointNames
- */
-var getBaseUrl = function ($location, $stateParams, baseUrl) {
-    if (!_.isUndefined(baseUrl)) {
-        return baseUrl;
-    }
-
-    var path = $location.path();
-    if (_.isUndefined($stateParams.id)) {
-        return path;
-    }
-
-    return path.substring(0, path.lastIndexOf('/'));
-};
-
-/**
- * A helper function for list routes which applies a few optimizations and some auto configuration.
- * In the current state it handles 4 settings:
- * * templateUrl - Auto-generation of the correct templateUrl based on conventions and the config.name property
- * * controller - Auto-generation of the correct controller based on conventions and the config.name property
- * * reloadOnSearch - this property is set to false
- * * resolve - a object with a 'listData' property is returned which is resolved via the correct endpoint
- *
- * @param {Object} config the route config object which will be used to generate the actual route configuration
- * @return {{reloadOnSearch: boolean, controller: string, templateUrl: (string), resolve: {config: Object}}}
- */
-var listRoute = function (config) {
-    var name = toLowerCaseName(config.name);
-
-    function getListDataPromise(catListDataLoadingService) {
-        return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
-    }
-
-    function getResolvedConfig($q, $stateParams, $location, catListDataLoadingService) {
-        var deferredConfig = $q.defer();
-        var resolvedConfig = {
-            name: config.name,
-            controller: config.controller || config.name + 'Controller',
-            baseUrl: getBaseUrl($location, $stateParams, config.baseUrl),
-            title: window.cat.util.pluralize(config.name),
-            searchProps: config.searchProps || window.cat.util.defaultListSearchProps,
-            listTemplateUrl: config.listTemplateUrl || (name + '/' + name + '-list.tpl.html')
-        };
-
-        getListDataPromise(catListDataLoadingService).then(
-            function (listData) {
-                resolvedConfig.listData = listData;
-                deferredConfig.resolve(resolvedConfig);
-            }
-        );
-
-        return deferredConfig.promise;
-    }
-
-    return {
-        url: config.url || '',
-        reloadOnSearch: false,
-        controller: 'CatBaseListController',
-        controllerAs: 'catBaseListController',
-        templateUrl: config.templateUrl || 'template/cat-base-list.tpl.html',
-        resolve: {
-            config: getResolvedConfig
-        }
-    };
-};
-
-/**
- * A helper function for detail routes which applies a few optimizations and some auto configuration.
- * The actual instantiated controller will be 'CatBaseDetailController' with a default templateUrl
- * 'template/cat-base-detail.tpl.html'. As the CatBaseDetailController expects a config object with several properties
- * (templateUrls, parents, detail, endpoint, etc.) this function also takes care of providing the correct 'resolve'
- * object which pre-loads all the necessary data.
- * @param {Object} config the route config object which will be used to generate the actual route configuration
- * @returns {{templateUrl: (string), controller: string, reloadOnSearch: (boolean), resolve: {config: (object)}}}
- */
-var detailRoute = function (config) {
-    var endpointName, parentEndpointNames;
-
-    if (_.isString(config.endpoint)) {
-        endpointName = config.endpoint;
-    } else if (_.isObject(config.endpoint)) {
-        parentEndpointNames = config.endpoint.parents;
-        endpointName = config.endpoint.name;
-    } else {
-        endpointName = toLowerCaseName(config.name);
-    }
-
-    var Model = config.model || window.cat.util.defaultModelResolver(config.name);
-
-    var parentUrl = '';
-    var parentTemplateNamePrefix = '';
-
-
-    if (_.isArray(parentEndpointNames)) {
-        _.forEach(parentEndpointNames, function (parentEndpointName) {
-            parentUrl += parentEndpointName;
-            parentUrl += '/';
-
-            parentTemplateNamePrefix += parentEndpointName;
-            parentTemplateNamePrefix += '-';
-        });
-    }
-
-    var tabs;
-
-    var templateUrls = {
-        edit: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-edit.tpl.html',
-        view: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-details-view.tpl.html'
-    };
-
-    if (config.additionalViewTemplate === true) {
-        templateUrls.view = {
-            main: templateUrls.view,
-            additional: parentUrl + endpointName + '/' + parentTemplateNamePrefix + endpointName + '-additional-details-view.tpl.html'
-        };
-    } else if (config.additionalViewTemplate === 'tabs') {
-        templateUrls.view = {
-            main: templateUrls.view,
-            additional: 'template/cat-base-additional-details-tabs-view.tpl.html'
-        };
-        tabs = config.additionalViewTemplateTabs;
-    }
-
-    function getEndpoint($stateParams, catApiService) {
-        var endpoint = catApiService[endpointName];
-
-        if (_.isArray(parentEndpointNames)) {
-            _.forEach(parentEndpointNames, function (parentEndpointName, idx) {
-                var currentEndpoint;
-                if (idx === 0) {
-                    // root api endpoint
-                    currentEndpoint = catApiService[parentEndpointName];
-                } else {
-                    // child api endpoint
-                    currentEndpoint = endpoint[parentEndpointName];
-                }
-                endpoint = currentEndpoint.res($stateParams[parentEndpointName + 'Id']);
-            });
-
-            endpoint = endpoint[endpointName];
-        }
-
-        return endpoint;
-    }
-
-    function getDetailData($stateParams, $q, endpoint) {
-        var detailPromise;
-        var detailId = $stateParams.id;
-        if (detailId === 'new') {
-            detailPromise = $q.when(new Model());
-        } else {
-            detailPromise = endpoint.get(detailId);
-        }
-        return detailPromise;
-    }
-
-    function getConfig($location, $stateParams, $q, catApiService) {
-        var deferred = $q.defer();
-        var endpoint = getEndpoint($stateParams, catApiService);
-
-        var baseUrl = getBaseUrl($location, $stateParams, config.baseUrl);
-
-        var resolvedConfig = {
-            name: config.name,
-            controller: config.controller || config.name + 'DetailsController',
-            endpoint: endpoint,
-            Model: Model,
-            templateUrls: templateUrls,
-            tabs: tabs,
-            baseUrl: baseUrl
-        };
-
-
-        var detailPromise = getDetailData($stateParams, $q, endpoint);
-        detailPromise.then(function (data) {
-            resolvedConfig.detail = data;
-        });
-
-        var parentsPromise = getParentInfo($q, endpoint);
-        parentsPromise.then(function (parents) {
-            resolvedConfig.parents = parents;
-        });
-
-        $q.all([detailPromise, parentsPromise]).then(
-            function () {
-                deferred.resolve(resolvedConfig);
-            },
-            function (reason) {
-                deferred.reject(reason);
-            }
-        );
-
-        return deferred.promise;
-    }
-
-    function getParentInfo($q, endpoint) {
-        if (!_.isUndefined(endpoint) && !_.isUndefined(endpoint.parentInfo)) {
-            var deferred = $q.defer();
-            var parents = [];
-            endpoint.parentInfo().then(
-                function (parent) {
-                    parents.push(parent);
-                    getParentInfo($q, endpoint.parentEndpoint).then(
-                        function (response) {
-                            parents.push(response);
-                            parents = _.flatten(parents);
-                            deferred.resolve(parents);
-                        },
-                        function (error) {
-                            deferred.reject(error);
-                        }
-                    );
-                }, function (error) {
-                    deferred.reject(error);
-                });
-            return deferred.promise;
-        } else {
-            return $q.when([]);
-        }
-    }
-
-    return {
-        url: config.url || '/:id',
-        templateUrl: config.templateUrl || 'template/cat-base-detail.tpl.html',
-        controller: 'CatBaseDetailController',
-        reloadOnSearch: config.reloadOnSearch,
-        resolve: {
-            config: getConfig
-        }
-    };
-};
-
-window.cat.util.route = {
-    list: listRoute,
-    detail: detailRoute
-};
 //# sourceMappingURL=cat-angular.js.map

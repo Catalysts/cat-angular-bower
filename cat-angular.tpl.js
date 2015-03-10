@@ -45,7 +45,7 @@ module.run(['$templateCache', function($templateCache) {
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
-    '            <a ui-sref="{{config.name}}.detail({id: \'new\'})" class="btn btn-xs btn-default"><span\n' +
+    '            <a ui-sref="^.detail({id: \'new\'})" class="btn btn-xs btn-default"><span\n' +
     '                    class="glyphicon glyphicon-plus"></span>\n' +
     '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
