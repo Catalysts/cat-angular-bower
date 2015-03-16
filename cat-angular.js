@@ -981,16 +981,18 @@ angular.module('cat.directives.inputs')
  */
     .directive('input', function CatInputDirective() {
         return {
-            require: 'ngModel',
+            require: '?ngModel',
             restrict: 'E',
             link: function CatInputLink(scope, element, attrs, ctrl) {
-                scope.$on('fieldErrors', function (event, fieldErrors) {
-                    if (!fieldErrors || !attrs.id) {
-                        return;
-                    }
-                    var valid = !fieldErrors[attrs.id];
-                    ctrl.$setValidity(attrs.id, valid);
-                });
+                if (!!ctrl) {
+                    scope.$on('fieldErrors', function (event, fieldErrors) {
+                        if (!fieldErrors || !attrs.id) {
+                            return;
+                        }
+                        var valid = !fieldErrors[attrs.id];
+                        ctrl.$setValidity(attrs.id, valid);
+                    });
+                }
             }
         };
     })
@@ -1545,6 +1547,34 @@ angular.module('cat.directives.numbersOnly')
             }
         };
     });
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 'use strict';
 
 
@@ -1576,34 +1606,6 @@ angular.module('cat.filters.replaceText')
             return String(text).replace(new RegExp(pattern, options), replacement);
         }
     };
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
 });
 
 'use strict';
@@ -3682,21 +3684,22 @@ window.cat.models = window.cat.models || {};
 window.cat.util.defaultModelResolver = function (name) {
     return window.cat.models[name];
 };
+        return 'cat';
     }
 
-    if (!!window.reguire && !!window.require.amd && !!window.define) {
+    if (!!window.require && !!window.define) {
         window.define([
             'jQuery',
             'lodash',
             'angular',
             'angular-spinner',
-            'angular-ui-bootstrap'
+            'angular-ui-select2',
+            'angular-ui-router',
+            'angular-ui-bootstrap',
+            './cat-angular.tpl.min'
         ], catAngular);
     } else {
-        catAngular(window.angular, window.jQuery, window._);
+        catAngular(window.jQuery, window._, window.angular);
     }
-
-    catAngular(window.angular, window.jQuery, window._);
-
 })(window);
 //# sourceMappingURL=cat-angular.js.map
