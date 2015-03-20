@@ -318,6 +318,814 @@ window.cat.SearchRequest = function (searchUrlParams) {
 'use strict';
 
 /**
+ * @ngdoc directive
+ * @name cat.directives.autofocus:catAutofocus
+ */
+angular.module('cat.directives.autofocus')
+    .directive('catAutofocus', ["$timeout", function CatAutofocusDirective($timeout) {
+        return {
+            restrict: 'A',
+            link: function CatAutofocusLink(scope, element) {
+                $timeout(function () {
+                    if (!_.isUndefined(element.data('select2'))) {
+                        element.select2('open');
+                    } else {
+                        element[0].focus();
+                    }
+                }, 100);
+            }
+        };
+    }]);
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.checkbox:catCheckbox
+ */
+angular.module('cat.directives.checkbox')
+    .directive('catCheckbox', function CatCheckboxDirective() {
+        return {
+            replace: true,
+            restrict: 'E',
+            scope: {
+                checked: '='
+            },
+            link: function CatCheckboxLink(scope, element) {
+                if (!!scope.checked) {
+                    element.addClass('glyphicon glyphicon-check');
+                } else {
+                    element.addClass('glyphicon glyphicon-unchecked');
+                }
+            }
+        };
+    });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.confirmClick:catConfirmClick
+ */
+angular.module('cat.directives.confirmClick')
+    .directive('catConfirmClick', function CatConfirmClickDirective() {
+        return {
+            restrict: 'A',
+            link: function CatConfirmClickLink(scope, element, attr) {
+                var msg = attr.catConfirmClick || 'Are you sure?';
+                var clickAction = attr.catOnConfirm;
+                element.bind('click', function (event) {
+                    if (window.confirm(msg)) {
+                        scope.$eval(clickAction);
+                    }
+                });
+            }
+        };
+    });
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.facets:catFacets
+ */
+angular.module('cat.directives.facets')
+    .directive('catFacets', function CatFacetsDirective() {
+        function _initDefaults(scope) {
+            if (_.isUndefined(scope.listData)) {
+                scope.listData = scope.$parent.listData;
+            }
+        }
+
+        function _checkConditions(scope) {
+            if (_.isUndefined(scope.listData)) {
+                throw new Error('listData was not defined and couldn\'t be found with default value');
+            }
+
+            if (_.isUndefined(scope.listData.facets)) {
+                throw new Error('No facets are available within given listData');
+            }
+        }
+
+        return {
+            replace: true,
+            restrict: 'E',
+            scope: {
+                listData: '=?',
+                names: '='
+            },
+            require: '^catPaginated',
+            templateUrl: 'template/cat-facets.tpl.html',
+            link: function CatFacetsLink(scope, element, attrs, catPaginatedController) {
+                _initDefaults(scope);
+                _checkConditions(scope);
+
+                scope.catPaginatedController = catPaginatedController;
+            },
+            controller: ["$scope", function CatFacetsController($scope) {
+                $scope.isActive = function (facet) {
+                    return !!$scope.catPaginatedController.getSearch()[facet.name];
+                };
+
+                function _search(search) {
+                    return $scope.catPaginatedController.getSearchRequest().search(search);
+                }
+
+                $scope.facetName = function (facet) {
+                    if ($scope.names !== undefined && $scope.names[facet.name] !== undefined) {
+                        return $scope.names[facet.name];
+                    } else {
+                        return facet.name;
+                    }
+                };
+
+                $scope.facets = {};
+
+                $scope.facetChanged = function (facet) {
+                    var search = _search();
+                    var value = $scope.facets[facet.name];
+                    if (!!value) {
+                        search[facet.name] = value;
+                    } else {
+                        delete search[facet.name];
+                    }
+                };
+
+                $scope.initFacets = function () {
+                    _.forEach($scope.listData.facets, function (facet) {
+                        if ($scope.isActive(facet)) {
+                            $scope.facets[facet.name] = $scope.catPaginatedController.getSearch()[facet.name];
+                        }
+                    });
+                };
+
+                $scope.facetSelectOptions = {
+                    allowClear: true
+                };
+            }]
+        };
+    });
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.fieldError:catFieldErrors
+ */
+angular.module('cat.directives.fieldErrors')
+    .directive('catFieldErrors', function CatFieldErrorsDirective() {
+        return {
+            replace: 'true',
+            restrict: 'E',
+            scope: {
+                name: '@'
+            },
+            bindToController: true,
+            controllerAs: 'catFieldErrors',
+            controller: ["$scope", "catValidationService", function CatFieldErrorsController($scope, catValidationService) {
+                var that = this;
+
+                if (angular.version.major === 1 && angular.version.minor === 2) {
+                    $scope.$watch('name', function(name) {
+                        that.name = name;
+                    });
+                }
+
+                this.hasErrors = function() {
+                    return catValidationService.hasFieldErrors(that.name);
+                };
+
+                this.getErrors = function() {
+                    return catValidationService.getFieldErrors(that.name);
+                };
+            }],
+            template: '<div class="label label-danger" ng-if="catFieldErrors.hasErrors()"><ul><li ng-repeat="error in catFieldErrors.getErrors()">{{error}}</li></ul></div>'
+        };
+    });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.i18n:catI18n
+ */
+angular.module('cat.directives.i18n')
+    .directive('catI18n', ['$log', '$rootScope', 'catI18nService', function CatI18nDirective($log, $rootScope, catI18nService) {
+        function _translate(scope, element) {
+            if (!scope.key) {
+                $log.warn('No key was given for cat-i18n!');
+                return;
+            }
+            catI18nService.translate(scope.key, scope.params).then(
+                function (message) {
+                    element.text(message);
+                }, function (reason) {
+                    // TODO - introduce a handler service for this case - eg show '##missingkey: somekey##'
+                }
+            );
+        }
+
+
+        return {
+            restrict: 'A',
+            scope: {
+                key: '@catI18n',
+                params: '=?i18nParams',
+                watchParams: '=?i18nWatchParams'
+            },
+            link: function CatI18nLink(scope, element) {
+                _translate(scope, element);
+
+                if (!!scope.params && scope.watchParams === true) {
+                    scope.$watch('params', function () {
+                        _translate(scope, element);
+                    }, true);
+                }
+
+                $rootScope.$on('cat-i18n-refresh', function () {
+                    _translate(scope, element);
+                });
+            }
+        };
+    }]);
+
+'use strict';
+
+angular.module('cat.directives.inputs')
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.inputs:input
+ */
+    .directive('input', function CatInputDirective() {
+        return {
+            require: '?ngModel',
+            restrict: 'E',
+            link: function CatInputLink(scope, element, attrs, ctrl) {
+                if (!!ctrl) {
+                    scope.$on('fieldErrors', function (event, fieldErrors) {
+                        if (!fieldErrors || !attrs.id) {
+                            return;
+                        }
+                        var valid = !fieldErrors[attrs.id];
+                        ctrl.$setValidity(attrs.id, valid);
+                    });
+                }
+            }
+        };
+    })
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.inputs:catInputGroup
+ */
+    .directive('catInputGroup', function CatInputGroupDirective() {
+        return {
+            restrict: 'A',
+            transclude: true,
+            scope: {
+                label: '@',
+                name: '@'
+            },
+            link: function CatInputGroupLink(scope, element) {
+                element.addClass('form-group');
+            },
+            templateUrl: 'template/cat-input.tpl.html'
+        };
+    });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.loadMore:catLoadMore
+ */
+angular.module('cat.directives.loadMore')
+    .directive('catLoadMore', function CatLoadMoreDirective() {
+        return {
+            replace: true,
+            restrict: 'A',
+            link: function CatLoadMoreLink(scope, element, attrs) {
+                var initialCount = parseInt(attrs.catLoadMore);
+                scope.$parent.elementsCount = scope.$parent.elementsCount || initialCount;
+                scope.$parent.elements = scope.$parent.elements || [];
+                scope.$parent.elements.push(element);
+                if (scope.$parent.elements.length > scope.$parent.elementsCount) {
+                    element.addClass('hidden');
+                }
+                if (!element.parent().next().length && scope.$parent.elements.length > scope.$parent.elementsCount) {
+                    var elt = $('<a href="#">Show more</a>');
+                    elt.on({
+                        click: function () {
+                            scope.$parent.elementsCount += initialCount;
+                            if (scope.$parent.elements.length <= scope.$parent.elementsCount) {
+                                elt.addClass('hidden');
+                            }
+                            scope.$parent.elements.forEach(function (elt, ind) {
+                                if (ind < scope.$parent.elementsCount) {
+                                    elt.removeClass('hidden');
+                                }
+                            });
+                            return false;
+                        }
+                    });
+                    element.parent().after(elt);
+                }
+            }
+        };
+    });
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.menu:catLoadMore
+ */
+angular.module('cat.directives.menu')
+    .directive('catMainMenu', ['$mainMenu', '$rootScope', function CatMainMenuDirective($mainMenu, $rootScope) {
+        return {
+            restrict: 'E',
+            scope: {},
+            link: function CatMainMenuLink(scope) {
+                scope.menus = $mainMenu.getMenus();
+                scope.isVisible = function (entry) {
+                    var visible = false;
+                    if (entry.isMenu() || entry.isGroup()) {
+                        _.forEach(entry.getEntries(), function (subEntry) {
+                            visible = visible || scope.isVisible(subEntry);
+                        });
+                        if (entry.isMenu()) {
+                            _.forEach(entry.getGroups(), function (groups) {
+                                visible = visible || scope.isVisible(groups);
+                            });
+                        }
+                    } else {
+                        return scope.isAllowed(entry);
+                    }
+                    return visible;
+                };
+                scope.isAllowed = function (entry) {
+                    var rights = entry.getOptions().rights;
+                    if (!!rights) {
+                        if (_.isArray(rights)) {
+                            var allowed = true;
+                            for (var i = 0; i < rights.length; i++) {
+                                allowed = allowed && $rootScope.isAllowed(rights[i]);
+                            }
+                            return allowed;
+                        }
+                        return $rootScope.isAllowed(rights);
+                    }
+                    return true;
+                };
+            },
+            templateUrl: 'template/cat-main-menu.tpl.html'
+        };
+    }]);
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.paginated:catPaginated
+ */
+angular.module('cat.directives.paginated')
+    .directive('catPaginated', ["$log", "catI18nService", function CatPaginatedDirective($log, catI18nService) {
+        var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
+
+        return {
+            replace: true,
+            restrict: 'E',
+            transclude: true,
+            scope: {
+                listData: '=?',
+                syncLocation: '=?'
+            },
+            templateUrl: 'template/cat-paginated.tpl.html',
+            link: function CatPaginatedLink(scope, element, attrs) {
+                if (!!attrs.searchProps) {
+                    scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
+                        return !!prop;
+                    });
+
+                    scope.searchPropertyPlaceholders = {};
+
+                    _.forEach(scope.searchProps, function (searchProp) {
+                        scope.searchPropertyPlaceholders[searchProp] = 'Search by ' + searchProp;
+                        catI18nService.translate(SEARCH_PROP_KEY, {prop: searchProp})
+                            .then(function (message) {
+                                scope.searchPropertyPlaceholders[searchProp] = message;
+                            });
+                    });
+                }
+            },
+            controllerAs: 'catPaginatedController',
+            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", "catSearchService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService, catSearchService) {
+                var that = this;
+                var searchTimeout = null, DELAY_ON_SEARCH = 500;
+                var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
+                var PAGINATION_NEXT_KEY = 'cc.catalysts.cat-paginated.pagination.next';
+                var PAGINATION_FIRST_KEY = 'cc.catalysts.cat-paginated.pagination.first';
+                var PAGINATION_LAST_KEY = 'cc.catalysts.cat-paginated.pagination.last';
+
+                if (_.isUndefined($scope.listData)) {
+                    $scope.listData = $scope.$parent.listData;
+                    if (_.isUndefined($scope.listData)) {
+                        throw new Error('listData was not defined and couldn\'t be found with default value');
+                    }
+                }
+
+                if (_.isUndefined($scope.syncLocation)) {
+                    $scope.syncLocation = _.isUndefined($scope.$parent.detail);
+                }
+
+                $scope.paginationText = {
+                    previous: 'Previous',
+                    next: 'Next',
+                    first: 'First',
+                    last: 'Last'
+                };
+
+                function handlePaginationTextResponse(prop) {
+                    return function (message) {
+                        $scope.paginationText[prop] = message;
+                    };
+                }
+
+
+                function _loadPaginationTranslations() {
+                    catI18nService.translate(PAGINATION_PREVIOUS_KEY).then(handlePaginationTextResponse('previous'));
+                    catI18nService.translate(PAGINATION_NEXT_KEY).then(handlePaginationTextResponse('next'));
+                    catI18nService.translate(PAGINATION_FIRST_KEY).then(handlePaginationTextResponse('first'));
+                    catI18nService.translate(PAGINATION_LAST_KEY).then(handlePaginationTextResponse('last'));
+                }
+
+                _loadPaginationTranslations();
+
+                $rootScope.$on('cat-i18n-refresh', function () {
+                    _loadPaginationTranslations();
+                });
+
+                $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
+
+                var searchRequest = $scope.listData.searchRequest;
+
+                var reload = function (delay, force) {
+                    $timeout.cancel(searchTimeout);
+                    searchTimeout = $timeout(function () {
+                        if (searchRequest.isDirty() || !!force) {
+                            catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
+                                function (data) {
+                                    searchRequest.setPristine();
+                                    _.assign($scope.listData, data);
+                                }
+                            );
+                        }
+                    }, delay || 0);
+                };
+
+                $scope.$on('cat-paginated-refresh', function () {
+                    reload(0, true);
+                });
+
+                $scope.$watch('listData.sort', function (newVal) {
+                    if (!!newVal) {
+                        console.log('broadcasting sort changed: ' + angular.toJson(newVal));
+                        $scope.$parent.$broadcast('SortChanged', newVal);
+                    }
+                }, true);
+
+                function updateLocation() {
+                    if ($scope.syncLocation !== false) {
+                        catSearchService.updateLocation(searchRequest);
+                        $location.replace();
+                    }
+                }
+
+                $scope.$watch('listData.pagination', function () {
+                    searchRequest.pagination($scope.listData.pagination);
+                    updateLocation();
+                    reload();
+                }, true);
+
+                var searchChanged = function (value, delay) {
+                    searchRequest.search(value);
+                    updateLocation();
+                    $scope.listData.pagination.page = 1;
+                    reload(delay);
+                };
+
+                var updateSearch = function (value) {
+                    var search = searchRequest.search();
+                    _.assign(search, value);
+                    searchChanged(value, DELAY_ON_SEARCH);
+                };
+
+                $scope.$watch('listData.search', updateSearch, true);
+
+                this.sort = function (value) {
+                    searchRequest.sort(value);
+                    updateLocation();
+                    $scope.listData.pagination.page = 1;
+                    reload();
+                };
+
+                this.getSearch = function () {
+                    return searchRequest.search();
+                };
+
+                this.getSearchRequest = function () {
+                    return searchRequest;
+                };
+
+                $scope.$on('SortChanged', function (event, value) {
+                    that.sort(value);
+                });
+            }]
+        };
+    }]);
+
+'use strict';
+
+function CatSelectLink(scope, element) {
+    element.addClass('form-control');
+}
+
+var fetchElements = function (endpoint, sort) {
+    return function (queryParams) {
+        var searchRequest = new window.cat.SearchRequest(queryParams.data);
+        searchRequest.sort(sort || { property: 'name', isDesc: false });
+        return endpoint.list(searchRequest).then(queryParams.success);
+    };
+};
+
+function CatSelectController($scope, $log, catApiService, catSelectConfigService) {
+
+    var options = catSelectConfigService.getConfig($scope.config, $scope.options);
+
+    if (_.isUndefined(options)) {
+        throw new Error('At least one of "config" or "options" has to be specified');
+    }
+
+    var transport,
+        quietMillis,
+        searchRequestFunc = options.search || function (term, page) {
+            return {
+                'search.name': term,
+                page: page
+            };
+        },
+        filterFunc = options.filter || function (term) {
+            return true;
+        };
+    if (_.isArray(options.endpoint)) {
+        transport = function (queryParams) {
+            return queryParams.success({
+                elements: options.endpoint
+            });
+        };
+        quietMillis = 0;
+    } else if (_.isFunction(options.endpoint)) {
+        transport = options.endpoint;
+        quietMillis = 500;
+    } else if (_.isObject(options.endpoint)) {
+        transport = fetchElements(options.endpoint, options.sort);
+        quietMillis = 500;
+    } else if (_.isString(options.endpoint)) {
+        var api = catApiService[options.endpoint];
+        if (!api) {
+            $log.error('No api endpoint "' + options.endpoint + '" defined');
+            $scope.elements = [];
+            return;
+        }
+        transport = fetchElements(api, options.sort);
+        quietMillis = 500;
+    } else {
+        $log.error('The given endpoint has to be one of the following types: array, object, string or function - but was ' + (typeof options.endpoint));
+        $scope.elements = [];
+        return;
+    }
+
+    $scope.selectOptions = _.assign({
+        placeholder: ' ', // space in default placeholder is required, otherwise allowClear property does not work
+        minimumInputLength: 0,
+        adaptDropdownCssClass: function (cssClass) {
+            if (_.contains(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
+                return cssClass;
+            }
+            return null;
+        },
+        ajax: {
+            data: searchRequestFunc,
+            quietMillis: quietMillis,
+            transport: transport,
+            results: function (data, page) {
+                var more = (page * options.size || 100) < data.totalCount;
+                return {
+                    results: _.filter(data.elements, filterFunc),
+                    more: more
+                };
+            }
+        },
+        formatResult: function (element) {
+            return element.name;
+        },
+        formatSelection: function (element) {
+            return element.name;
+        }
+    }, options['ui-select2']);
+}
+CatSelectController.$inject = ["$scope", "$log", "catApiService", "catSelectConfigService"];
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.select:catSelect
+ * @scope
+ * @restrict EA
+ *
+ * @description
+ * The 'cat-select' directive is a wrapper around the 'ui-select2' directive which adds support for using an api
+ * endpoint provided by catApiService. There exist 2 supported ways of configuration:
+ * - The 'config' attribute: This represents a named configuration which will be retrieved from the catSelectConfigService
+ * - The 'options' attribute: Here the options object can directly be passed in
+ *
+ * The 2 different approaches exist to easily reuse certain options, as the named config is seen as 'default' and all
+ * values which are provided via the options object will be overridden.
+ *
+ * An config / options object has the following properties:
+ * - endpoint: This can either be an array, in which case it will directly be treated as the source, an endpoint name
+ * or an endpoint object to call the given endpoint, or a function which is used as the 'transport' function
+ * - sort: An object which defines the 'sort' property and direction used when retrieving the list from an endpoint
+ * - ui-select2: An config object which supports all options provided by the 'ui-select2' directive
+ *
+ * TODO fix returns doc (not the correct format)
+ * returns {{
+ *      restrict: {string},
+ *      replace: {boolean},
+ *      priority: {number},
+ *      scope: {
+ *          options: {string},
+ *          id: {string},
+ *          config: {string}
+ *      },
+ *      link: {CatSelectLink},
+ *      controller: {CatSelectController},
+ *      template: {string}
+ * }}
+ * @constructor
+ */
+function CatSelectDirective() {
+    return {
+        restrict: 'EA',
+        replace: true,
+        priority: 1,
+        scope: {
+            options: '=?',
+            id: '@',
+            config: '@?'
+        },
+        link: CatSelectLink,
+        controller: CatSelectController,
+        template: '<input type="text" ui-select2="selectOptions">'
+    };
+}
+
+angular.module('cat.directives.select')
+    .directive('catSelect', CatSelectDirective);
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.sortable:catSortable
+ */
+angular.module('cat.directives.sortable')
+    .directive('catSortable', ["$compile", function CatSortableDirective($compile) {
+        return {
+            restrict: 'AC',
+            require: '^catPaginated',
+            link: function CatSortableLink(scope, element, attrs, catPaginatedController) {
+                var title = element.text();
+                var property = attrs.catSortable || title.toLowerCase().trim();
+
+                // todo - make configurable
+                scope.sort = scope.listData.searchRequest.sort();
+                scope.catPaginatedController = catPaginatedController;
+                var icon = 'glyphicon-sort-by-attributes';
+
+                if (!!attrs.sortMode) {
+                    if (attrs.sortMode === 'numeric') {
+                        icon = 'glyphicon-sort-by-order';
+                    } else if (attrs.sortMode === 'alphabet') {
+                        icon = 'glyphicon-sort-by-alphabet';
+                    }
+                }
+
+                element.text('');
+                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')" cat-i18n="cc.catalysts.cat-sortable.sort.' + property + '">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
+            },
+            controller: ["$scope", function CatSortableController($scope) {
+                $scope.toggleSort = function (property) {
+                    if ($scope.sort.property === property) {
+                        $scope.sort.isDesc = !$scope.sort.isDesc;
+                    } else {
+                        $scope.sort.property = property;
+                        $scope.sort.isDesc = false;
+                    }
+
+                    $scope.catPaginatedController.sort($scope.sort);
+                };
+
+                $scope.$on('SortChanged', function (event, value) {
+                    $scope.sort = value;
+                });
+            }]
+        };
+    }]);
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.form:form
+ */
+angular.module('cat.directives.form')
+    .directive('form', ['$timeout', function CatFormDirective($timeout) {
+        return {
+            restrict: 'E',
+            scope: true,
+            require: 'form',
+            link: function CatFormLink(scope, element, attrs, formCtrl) {
+                var warningMessage = attrs.eocsWarnOnNavIfDirty || 'You have unsaved changes. Leave the page?';
+
+                // TODO - remove this ugly hack if ui-select2 fixes this problem...
+                $timeout(function () {
+                    formCtrl.$setPristine(true);
+                }, 50);
+
+                scope.$on('formReset', function () {
+                    formCtrl.$setPristine(true);
+                });
+
+                scope.$on('formDirty', function () {
+                    formCtrl.$setDirty(true);
+                });
+
+                // handle angular route change
+                scope.$on('$locationChangeStart', function (event) {
+                    if (formCtrl.$dirty) {
+                        if (!window.confirm(warningMessage)) {
+                            event.preventDefault();
+                        }
+                    }
+                });
+
+                // handle browser window/tab close
+                $(window).on('beforeunload', function (event) {
+                    if (formCtrl.$dirty) {
+                        return warningMessage;
+                    }
+                });
+
+                // clean up beforeunload handler when scope is destroyed
+                scope.$on('$destroy', function () {
+                    $(window).unbind('beforeunload');
+                });
+            }
+        };
+    }]);
+
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.numbersOnly:numbersOnly
+ */
+angular.module('cat.directives.numbersOnly')
+    .directive('numbersOnly', function CatNumbersOnlyDirective() {
+        return {
+            require: 'ngModel',
+            link: function CatNumbersOnlyLink(scope, element, attrs, modelCtrl) {
+                modelCtrl.$parsers.push(function (inputValue) {
+                    if (!inputValue) return '';
+
+                    var pattern = '[^0-9]';
+
+                    if (!!attrs.hasOwnProperty('allowFraction')) {
+                        pattern = '[^0-9,.]';
+                    }
+
+                    var transformedInput = inputValue.replace(new RegExp(pattern, 'g'), '');
+
+                    if (transformedInput !== inputValue) {
+                        modelCtrl.$setViewValue(transformedInput);
+                        modelCtrl.$render();
+                    }
+
+                    return transformedInput;
+                });
+            }
+        };
+    });
+'use strict';
+
+/**
  * @ngdoc controller
  * @name cat.controller.base.detail:CatBaseDetailController
  * @module cat.controller.base.detail
@@ -747,806 +1555,6 @@ CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$loca
 angular.module('cat.controller.base.tabs').controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
-/**
- * @ngdoc directive
- * @name cat.directives.autofocus:catAutofocus
- */
-angular.module('cat.directives.autofocus')
-    .directive('catAutofocus', ["$timeout", function CatAutofocusDirective($timeout) {
-        return {
-            restrict: 'A',
-            link: function CatAutofocusLink(scope, element) {
-                $timeout(function () {
-                    if (!_.isUndefined(element.data('select2'))) {
-                        element.select2('open');
-                    } else {
-                        element[0].focus();
-                    }
-                }, 100);
-            }
-        };
-    }]);
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.checkbox:catCheckbox
- */
-angular.module('cat.directives.checkbox')
-    .directive('catCheckbox', function CatCheckboxDirective() {
-        return {
-            replace: true,
-            restrict: 'E',
-            scope: {
-                checked: '='
-            },
-            link: function CatCheckboxLink(scope, element) {
-                if (!!scope.checked) {
-                    element.addClass('glyphicon glyphicon-check');
-                } else {
-                    element.addClass('glyphicon glyphicon-unchecked');
-                }
-            }
-        };
-    });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.confirmClick:catConfirmClick
- */
-angular.module('cat.directives.confirmClick')
-    .directive('catConfirmClick', function CatConfirmClickDirective() {
-        return {
-            restrict: 'A',
-            link: function CatConfirmClickLink(scope, element, attr) {
-                var msg = attr.catConfirmClick || 'Are you sure?';
-                var clickAction = attr.catOnConfirm;
-                element.bind('click', function (event) {
-                    if (window.confirm(msg)) {
-                        scope.$eval(clickAction);
-                    }
-                });
-            }
-        };
-    });
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.facets:catFacets
- */
-angular.module('cat.directives.facets')
-    .directive('catFacets', function CatFacetsDirective() {
-        function _initDefaults(scope) {
-            if (_.isUndefined(scope.listData)) {
-                scope.listData = scope.$parent.listData;
-            }
-        }
-
-        function _checkConditions(scope) {
-            if (_.isUndefined(scope.listData)) {
-                throw new Error('listData was not defined and couldn\'t be found with default value');
-            }
-
-            if (_.isUndefined(scope.listData.facets)) {
-                throw new Error('No facets are available within given listData');
-            }
-        }
-
-        return {
-            replace: true,
-            restrict: 'E',
-            scope: {
-                listData: '=?',
-                names: '='
-            },
-            require: '^catPaginated',
-            templateUrl: 'template/cat-facets.tpl.html',
-            link: function CatFacetsLink(scope, element, attrs, catPaginatedController) {
-                _initDefaults(scope);
-                _checkConditions(scope);
-
-                scope.catPaginatedController = catPaginatedController;
-            },
-            controller: ["$scope", function CatFacetsController($scope) {
-                $scope.isActive = function (facet) {
-                    return !!$scope.catPaginatedController.getSearch()[facet.name];
-                };
-
-                function _search(search) {
-                    return $scope.catPaginatedController.getSearchRequest().search(search);
-                }
-
-                $scope.facetName = function (facet) {
-                    if ($scope.names !== undefined && $scope.names[facet.name] !== undefined) {
-                        return $scope.names[facet.name];
-                    } else {
-                        return facet.name;
-                    }
-                };
-
-                $scope.facets = {};
-
-                $scope.facetChanged = function (facet) {
-                    var search = _search();
-                    var value = $scope.facets[facet.name];
-                    if (!!value) {
-                        search[facet.name] = value;
-                    } else {
-                        delete search[facet.name];
-                    }
-                };
-
-                $scope.initFacets = function () {
-                    _.forEach($scope.listData.facets, function (facet) {
-                        if ($scope.isActive(facet)) {
-                            $scope.facets[facet.name] = $scope.catPaginatedController.getSearch()[facet.name];
-                        }
-                    });
-                };
-
-                $scope.facetSelectOptions = {
-                    allowClear: true
-                };
-            }]
-        };
-    });
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.fieldError:catFieldErrors
- */
-angular.module('cat.directives.fieldErrors')
-    .directive('catFieldErrors', function CatFieldErrorsDirective() {
-        return {
-            replace: 'true',
-            restrict: 'E',
-            scope: {
-                name: '@'
-            },
-            bindToController: true,
-            controllerAs: 'catFieldErrors',
-            controller: ["$scope", "catValidationService", function CatFieldErrorsController($scope, catValidationService) {
-                this.hasErrors = function() {
-                    return catValidationService.hasFieldErrors($scope.name);
-                };
-
-                this.getErrors = function() {
-                    return catValidationService.getFieldErrors($scope.name);
-                };
-            }],
-            template: '<div class="label label-danger" ng-if="catFieldErrors.hasErrors()"><ul><li ng-repeat="error in catFieldErrors.getErrors()">{{error}}</li></ul></div>'
-        };
-    });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.i18n:catI18n
- */
-angular.module('cat.directives.i18n')
-    .directive('catI18n', ['$log', '$rootScope', 'catI18nService', function CatI18nDirective($log, $rootScope, catI18nService) {
-        function _translate(scope, element) {
-            if (!scope.key) {
-                $log.warn('No key was given for cat-i18n!');
-                return;
-            }
-            catI18nService.translate(scope.key, scope.params).then(
-                function (message) {
-                    element.text(message);
-                }, function (reason) {
-                    // TODO - introduce a handler service for this case - eg show '##missingkey: somekey##'
-                }
-            );
-        }
-
-
-        return {
-            restrict: 'A',
-            scope: {
-                key: '@catI18n',
-                params: '=?i18nParams',
-                watchParams: '=?i18nWatchParams'
-            },
-            link: function CatI18nLink(scope, element) {
-                _translate(scope, element);
-
-                if (!!scope.params && scope.watchParams === true) {
-                    scope.$watch('params', function () {
-                        _translate(scope, element);
-                    }, true);
-                }
-
-                $rootScope.$on('cat-i18n-refresh', function () {
-                    _translate(scope, element);
-                });
-            }
-        };
-    }]);
-
-'use strict';
-
-angular.module('cat.directives.inputs')
-
-/**
- * @ngdoc directive
- * @name cat.directives.inputs:input
- */
-    .directive('input', function CatInputDirective() {
-        return {
-            require: '?ngModel',
-            restrict: 'E',
-            link: function CatInputLink(scope, element, attrs, ctrl) {
-                if (!!ctrl) {
-                    scope.$on('fieldErrors', function (event, fieldErrors) {
-                        if (!fieldErrors || !attrs.id) {
-                            return;
-                        }
-                        var valid = !fieldErrors[attrs.id];
-                        ctrl.$setValidity(attrs.id, valid);
-                    });
-                }
-            }
-        };
-    })
-
-/**
- * @ngdoc directive
- * @name cat.directives.inputs:catInputGroup
- */
-    .directive('catInputGroup', function CatInputGroupDirective() {
-        return {
-            restrict: 'A',
-            transclude: true,
-            scope: {
-                label: '@',
-                name: '@'
-            },
-            link: function CatInputGroupLink(scope, element) {
-                element.addClass('form-group');
-            },
-            templateUrl: 'template/cat-input.tpl.html'
-        };
-    });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.loadMore:catLoadMore
- */
-angular.module('cat.directives.loadMore')
-    .directive('catLoadMore', function CatLoadMoreDirective() {
-        return {
-            replace: true,
-            restrict: 'A',
-            link: function CatLoadMoreLink(scope, element, attrs) {
-                var initialCount = parseInt(attrs.catLoadMore);
-                scope.$parent.elementsCount = scope.$parent.elementsCount || initialCount;
-                scope.$parent.elements = scope.$parent.elements || [];
-                scope.$parent.elements.push(element);
-                if (scope.$parent.elements.length > scope.$parent.elementsCount) {
-                    element.addClass('hidden');
-                }
-                if (!element.parent().next().length && scope.$parent.elements.length > scope.$parent.elementsCount) {
-                    var elt = $('<a href="#">Show more</a>');
-                    elt.on({
-                        click: function () {
-                            scope.$parent.elementsCount += initialCount;
-                            if (scope.$parent.elements.length <= scope.$parent.elementsCount) {
-                                elt.addClass('hidden');
-                            }
-                            scope.$parent.elements.forEach(function (elt, ind) {
-                                if (ind < scope.$parent.elementsCount) {
-                                    elt.removeClass('hidden');
-                                }
-                            });
-                            return false;
-                        }
-                    });
-                    element.parent().after(elt);
-                }
-            }
-        };
-    });
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.menu:catLoadMore
- */
-angular.module('cat.directives.menu')
-    .directive('catMainMenu', ['$mainMenu', '$rootScope', function CatMainMenuDirective($mainMenu, $rootScope) {
-        return {
-            restrict: 'E',
-            scope: {},
-            link: function CatMainMenuLink(scope) {
-                scope.menus = $mainMenu.getMenus();
-                scope.isVisible = function (entry) {
-                    var visible = false;
-                    if (entry.isMenu() || entry.isGroup()) {
-                        _.forEach(entry.getEntries(), function (subEntry) {
-                            visible = visible || scope.isVisible(subEntry);
-                        });
-                        if (entry.isMenu()) {
-                            _.forEach(entry.getGroups(), function (groups) {
-                                visible = visible || scope.isVisible(groups);
-                            });
-                        }
-                    } else {
-                        return scope.isAllowed(entry);
-                    }
-                    return visible;
-                };
-                scope.isAllowed = function (entry) {
-                    var rights = entry.getOptions().rights;
-                    if (!!rights) {
-                        if (_.isArray(rights)) {
-                            var allowed = true;
-                            for (var i = 0; i < rights.length; i++) {
-                                allowed = allowed && $rootScope.isAllowed(rights[i]);
-                            }
-                            return allowed;
-                        }
-                        return $rootScope.isAllowed(rights);
-                    }
-                    return true;
-                };
-            },
-            templateUrl: 'template/cat-main-menu.tpl.html'
-        };
-    }]);
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.paginated:catPaginated
- */
-angular.module('cat.directives.paginated')
-    .directive('catPaginated', ["$log", "catI18nService", function CatPaginatedDirective($log, catI18nService) {
-        var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
-
-        return {
-            replace: true,
-            restrict: 'E',
-            transclude: true,
-            scope: {
-                listData: '=?',
-                syncLocation: '=?'
-            },
-            templateUrl: 'template/cat-paginated.tpl.html',
-            link: function CatPaginatedLink(scope, element, attrs) {
-                if (!!attrs.searchProps) {
-                    scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
-                        return !!prop;
-                    });
-
-                    scope.searchPropertyPlaceholders = {};
-
-                    _.forEach(scope.searchProps, function (searchProp) {
-                        scope.searchPropertyPlaceholders[searchProp] = 'Search by ' + searchProp;
-                        catI18nService.translate(SEARCH_PROP_KEY, {prop: searchProp})
-                            .then(function (message) {
-                                scope.searchPropertyPlaceholders[searchProp] = message;
-                            });
-                    });
-                }
-            },
-            controllerAs: 'catPaginatedController',
-            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", "catSearchService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService, catSearchService) {
-                var that = this;
-                var searchTimeout = null, DELAY_ON_SEARCH = 500;
-                var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
-                var PAGINATION_NEXT_KEY = 'cc.catalysts.cat-paginated.pagination.next';
-                var PAGINATION_FIRST_KEY = 'cc.catalysts.cat-paginated.pagination.first';
-                var PAGINATION_LAST_KEY = 'cc.catalysts.cat-paginated.pagination.last';
-
-                if (_.isUndefined($scope.listData)) {
-                    $scope.listData = $scope.$parent.listData;
-                    if (_.isUndefined($scope.listData)) {
-                        throw new Error('listData was not defined and couldn\'t be found with default value');
-                    }
-                }
-
-                if (_.isUndefined($scope.syncLocation)) {
-                    $scope.syncLocation = _.isUndefined($scope.$parent.detail);
-                }
-
-                $scope.paginationText = {
-                    previous: 'Previous',
-                    next: 'Next',
-                    first: 'First',
-                    last: 'Last'
-                };
-
-                function handlePaginationTextResponse(prop) {
-                    return function (message) {
-                        $scope.paginationText[prop] = message;
-                    };
-                }
-
-
-                function _loadPaginationTranslations() {
-                    catI18nService.translate(PAGINATION_PREVIOUS_KEY).then(handlePaginationTextResponse('previous'));
-                    catI18nService.translate(PAGINATION_NEXT_KEY).then(handlePaginationTextResponse('next'));
-                    catI18nService.translate(PAGINATION_FIRST_KEY).then(handlePaginationTextResponse('first'));
-                    catI18nService.translate(PAGINATION_LAST_KEY).then(handlePaginationTextResponse('last'));
-                }
-
-                _loadPaginationTranslations();
-
-                $rootScope.$on('cat-i18n-refresh', function () {
-                    _loadPaginationTranslations();
-                });
-
-                $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
-
-                var searchRequest = $scope.listData.searchRequest;
-
-                var reload = function (delay, force) {
-                    $timeout.cancel(searchTimeout);
-                    searchTimeout = $timeout(function () {
-                        if (searchRequest.isDirty() || !!force) {
-                            catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
-                                function (data) {
-                                    searchRequest.setPristine();
-                                    _.assign($scope.listData, data);
-                                }
-                            );
-                        }
-                    }, delay || 0);
-                };
-
-                $rootScope.$on('cat-paginated-refresh', function () {
-                    reload(0, true);
-                });
-
-                $scope.$watch('listData.sort', function (newVal) {
-                    if (!!newVal) {
-                        console.log('broadcasting sort changed: ' + angular.toJson(newVal));
-                        $scope.$parent.$broadcast('SortChanged', newVal);
-                    }
-                }, true);
-
-                function updateLocation() {
-                    if ($scope.syncLocation !== false) {
-                        catSearchService.updateLocation(searchRequest);
-                        $location.replace();
-                    }
-                }
-
-                $scope.$watch('listData.pagination', function () {
-                    searchRequest.pagination($scope.listData.pagination);
-                    updateLocation();
-                    reload();
-                }, true);
-
-                var searchChanged = function (value, delay) {
-                    searchRequest.search(value);
-                    updateLocation();
-                    $scope.listData.pagination.page = 1;
-                    reload(delay);
-                };
-
-                var updateSearch = function (value) {
-                    var search = searchRequest.search();
-                    _.assign(search, value);
-                    searchChanged(value, DELAY_ON_SEARCH);
-                };
-
-                $scope.$watch('listData.search', updateSearch, true);
-
-                this.sort = function (value) {
-                    searchRequest.sort(value);
-                    updateLocation();
-                    $scope.listData.pagination.page = 1;
-                    reload();
-                };
-
-                this.getSearch = function () {
-                    return searchRequest.search();
-                };
-
-                this.getSearchRequest = function () {
-                    return searchRequest;
-                };
-
-                $scope.$on('SortChanged', function (event, value) {
-                    that.sort(value);
-                });
-            }]
-        };
-    }]);
-
-'use strict';
-
-function CatSelectLink(scope, element) {
-    element.addClass('form-control');
-}
-
-var fetchElements = function (endpoint, sort) {
-    return function (queryParams) {
-        var searchRequest = new window.cat.SearchRequest(queryParams.data);
-        searchRequest.sort(sort || { property: 'name', isDesc: false });
-        return endpoint.list(searchRequest).then(queryParams.success);
-    };
-};
-
-function CatSelectController($scope, $log, catApiService, catSelectConfigService) {
-
-    var options = catSelectConfigService.getConfig($scope.config, $scope.options);
-
-    if (_.isUndefined(options)) {
-        throw new Error('At least one of "config" or "options" has to be specified');
-    }
-
-    var transport,
-        quietMillis,
-        searchRequestFunc = options.search || function (term, page) {
-            return {
-                'search.name': term,
-                page: page
-            };
-        },
-        filterFunc = options.filter || function (term) {
-            return true;
-        };
-    if (_.isArray(options.endpoint)) {
-        transport = function (queryParams) {
-            return queryParams.success({
-                elements: options.endpoint
-            });
-        };
-        quietMillis = 0;
-    } else if (_.isFunction(options.endpoint)) {
-        transport = options.endpoint;
-        quietMillis = 500;
-    } else if (_.isObject(options.endpoint)) {
-        transport = fetchElements(options.endpoint, options.sort);
-        quietMillis = 500;
-    } else if (_.isString(options.endpoint)) {
-        var api = catApiService[options.endpoint];
-        if (!api) {
-            $log.error('No api endpoint "' + options.endpoint + '" defined');
-            $scope.elements = [];
-            return;
-        }
-        transport = fetchElements(api, options.sort);
-        quietMillis = 500;
-    } else {
-        $log.error('The given endpoint has to be one of the following types: array, object, string or function - but was ' + (typeof options.endpoint));
-        $scope.elements = [];
-        return;
-    }
-
-    $scope.selectOptions = _.assign({
-        placeholder: ' ', // space in default placeholder is required, otherwise allowClear property does not work
-        minimumInputLength: 0,
-        adaptDropdownCssClass: function (cssClass) {
-            if (_.contains(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
-                return cssClass;
-            }
-            return null;
-        },
-        ajax: {
-            data: searchRequestFunc,
-            quietMillis: quietMillis,
-            transport: transport,
-            results: function (data, page) {
-                var more = (page * options.size || 100) < data.totalCount;
-                return {
-                    results: _.filter(data.elements, filterFunc),
-                    more: more
-                };
-            }
-        },
-        formatResult: function (element) {
-            return element.name;
-        },
-        formatSelection: function (element) {
-            return element.name;
-        }
-    }, options['ui-select2']);
-}
-CatSelectController.$inject = ["$scope", "$log", "catApiService", "catSelectConfigService"];
-
-/**
- * @ngdoc directive
- * @name cat.directives.select:catSelect
- * @scope
- * @restrict EA
- *
- * @description
- * The 'cat-select' directive is a wrapper around the 'ui-select2' directive which adds support for using an api
- * endpoint provided by catApiService. There exist 2 supported ways of configuration:
- * - The 'config' attribute: This represents a named configuration which will be retrieved from the catSelectConfigService
- * - The 'options' attribute: Here the options object can directly be passed in
- *
- * The 2 different approaches exist to easily reuse certain options, as the named config is seen as 'default' and all
- * values which are provided via the options object will be overridden.
- *
- * An config / options object has the following properties:
- * - endpoint: This can either be an array, in which case it will directly be treated as the source, an endpoint name
- * or an endpoint object to call the given endpoint, or a function which is used as the 'transport' function
- * - sort: An object which defines the 'sort' property and direction used when retrieving the list from an endpoint
- * - ui-select2: An config object which supports all options provided by the 'ui-select2' directive
- *
- * TODO fix returns doc (not the correct format)
- * returns {{
- *      restrict: {string},
- *      replace: {boolean},
- *      priority: {number},
- *      scope: {
- *          options: {string},
- *          id: {string},
- *          config: {string}
- *      },
- *      link: {CatSelectLink},
- *      controller: {CatSelectController},
- *      template: {string}
- * }}
- * @constructor
- */
-function CatSelectDirective() {
-    return {
-        restrict: 'EA',
-        replace: true,
-        priority: 1,
-        scope: {
-            options: '=?',
-            id: '@',
-            config: '@?'
-        },
-        link: CatSelectLink,
-        controller: CatSelectController,
-        template: '<input type="text" ui-select2="selectOptions">'
-    };
-}
-
-angular.module('cat.directives.select')
-    .directive('catSelect', CatSelectDirective);
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.sortable:catSortable
- */
-angular.module('cat.directives.sortable')
-    .directive('catSortable', ["$compile", function CatSortableDirective($compile) {
-        return {
-            restrict: 'AC',
-            require: '^catPaginated',
-            link: function CatSortableLink(scope, element, attrs, catPaginatedController) {
-                var title = element.text();
-                var property = attrs.catSortable || title.toLowerCase().trim();
-
-                // todo - make configurable
-                scope.sort = scope.listData.searchRequest.sort();
-                scope.catPaginatedController = catPaginatedController;
-                var icon = 'glyphicon-sort-by-attributes';
-
-                if (!!attrs.sortMode) {
-                    if (attrs.sortMode === 'numeric') {
-                        icon = 'glyphicon-sort-by-order';
-                    } else if (attrs.sortMode === 'alphabet') {
-                        icon = 'glyphicon-sort-by-alphabet';
-                    }
-                }
-
-                element.text('');
-                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')" cat-i18n="cc.catalysts.cat-sortable.sort.' + property + '">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
-            },
-            controller: ["$scope", function CatSortableController($scope) {
-                $scope.toggleSort = function (property) {
-                    if ($scope.sort.property === property) {
-                        $scope.sort.isDesc = !$scope.sort.isDesc;
-                    } else {
-                        $scope.sort.property = property;
-                        $scope.sort.isDesc = false;
-                    }
-
-                    $scope.catPaginatedController.sort($scope.sort);
-                };
-
-                $scope.$on('SortChanged', function (event, value) {
-                    $scope.sort = value;
-                });
-            }]
-        };
-    }]);
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.form:form
- */
-angular.module('cat.directives.form')
-    .directive('form', ['$timeout', function CatFormDirective($timeout) {
-        return {
-            restrict: 'E',
-            scope: true,
-            require: 'form',
-            link: function CatFormLink(scope, element, attrs, formCtrl) {
-                var warningMessage = attrs.eocsWarnOnNavIfDirty || 'You have unsaved changes. Leave the page?';
-
-                // TODO - remove this ugly hack if ui-select2 fixes this problem...
-                $timeout(function () {
-                    formCtrl.$setPristine(true);
-                }, 50);
-
-                scope.$on('formReset', function () {
-                    formCtrl.$setPristine(true);
-                });
-
-                scope.$on('formDirty', function () {
-                    formCtrl.$setDirty(true);
-                });
-
-                // handle angular route change
-                scope.$on('$locationChangeStart', function (event) {
-                    if (formCtrl.$dirty) {
-                        if (!window.confirm(warningMessage)) {
-                            event.preventDefault();
-                        }
-                    }
-                });
-
-                // handle browser window/tab close
-                $(window).on('beforeunload', function (event) {
-                    if (formCtrl.$dirty) {
-                        return warningMessage;
-                    }
-                });
-
-                // clean up beforeunload handler when scope is destroyed
-                scope.$on('$destroy', function () {
-                    $(window).unbind('beforeunload');
-                });
-            }
-        };
-    }]);
-
-'use strict';
-
-/**
- * @ngdoc directive
- * @name cat.directives.numbersOnly:numbersOnly
- */
-angular.module('cat.directives.numbersOnly')
-    .directive('numbersOnly', function CatNumbersOnlyDirective() {
-        return {
-            require: 'ngModel',
-            link: function CatNumbersOnlyLink(scope, element, attrs, modelCtrl) {
-                modelCtrl.$parsers.push(function (inputValue) {
-                    if (!inputValue) return '';
-
-                    var pattern = '[^0-9]';
-
-                    if (!!attrs.hasOwnProperty('allowFraction')) {
-                        pattern = '[^0-9,.]';
-                    }
-
-                    var transformedInput = inputValue.replace(new RegExp(pattern, 'g'), '');
-
-                    if (transformedInput !== inputValue) {
-                        modelCtrl.$setViewValue(transformedInput);
-                        modelCtrl.$render();
-                    }
-
-                    return transformedInput;
-                });
-            }
-        };
-    });
-'use strict';
-
 
 angular.module('cat.filters.replaceText')
 
@@ -1576,34 +1584,6 @@ angular.module('cat.filters.replaceText')
             return String(text).replace(new RegExp(pattern, options), replacement);
         }
     };
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
 });
 
 'use strict';
@@ -3632,6 +3612,34 @@ angular.module('cat.service.message').service('$globalMessages', ["$rootScope", 
         self.clearMessages();
     });
 }]);
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
 
 /**
  * Created by tscheinecker on 26.08.2014.
