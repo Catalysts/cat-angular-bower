@@ -1,10 +1,5 @@
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template', ['ui.bootstrap.tpls']);
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
     '<tabset>\n' +
     '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
@@ -17,15 +12,8 @@ module.run(['$templateCache', function($templateCache) {
     '\n' +
     '');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-detail.tpl.html',
     '<div ng-repeat="parent in uiStack" class="alert alert-info"><a ng-href="{{parent.url}}">\n' +
     '    {{parent.title}}\n' +
@@ -76,15 +64,8 @@ module.run(['$templateCache', function($templateCache) {
     '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
     '     ng-controller="baseTabsController"></div>');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-list.tpl.html',
     '<h2>\n' +
     '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
@@ -98,15 +79,8 @@ module.run(['$templateCache', function($templateCache) {
     '</cat-paginated>\n' +
     '');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-facets.tpl.html',
     '<div>\n' +
     '    <ul class="nav">\n' +
@@ -123,15 +97,8 @@ module.run(['$templateCache', function($templateCache) {
     '    </ul>\n' +
     '</div>');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-input.tpl.html',
     '<label class="col-sm-2 control-label" for="{{name}}">{{label}}</label>\n' +
     '<div class="col-sm-10">\n' +
@@ -140,15 +107,8 @@ module.run(['$templateCache', function($templateCache) {
     '</div>\n' +
     '');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
     '<ul class="nav navbar-nav">\n' +
     '    <li class="dropdown" ng-repeat="menu in menus" dropdown="">\n' +
@@ -175,15 +135,8 @@ module.run(['$templateCache', function($templateCache) {
     '    </li>\n' +
     '</ul>');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-paginated.tpl.html',
     '<div ng-cloak>\n' +
     '    <div ng-if="searchProps" class="row search">\n' +
@@ -225,15 +178,8 @@ module.run(['$templateCache', function($templateCache) {
     '</div>\n' +
     '');
 }]);
-})();
 
-(function(module) {
-try {
-  module = angular.module('cat.template');
-} catch (e) {
-  module = angular.module('cat.template', []);
-}
-module.run(['$templateCache', function($templateCache) {
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/tabs/tabset.html',
     '<div class="row tabset">\n' +
     '    <!-- override angular-ui template -->\n' +
@@ -246,6 +192,5 @@ module.run(['$templateCache', function($templateCache) {
     '    </div>\n' +
     '</div>');
 }]);
-})();
 
 //# sourceMappingURL=cat-angular.tpl.js.map
