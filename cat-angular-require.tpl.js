@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
  */
-(function (angular) {
+define(['angular', 'angular-ui-bootstrap'], function(angular) {
     'use strict';
 
     angular.module('cat.template', ['ui.bootstrap.tpls']);
@@ -211,5 +211,6 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '</div>');
 }]);
 
-})(window.angular);
-//# sourceMappingURL=cat-angular.tpl.js.map
+    return 'cat.template';
+});
+//# sourceMappingURL=cat-angular-require.tpl.js.map
