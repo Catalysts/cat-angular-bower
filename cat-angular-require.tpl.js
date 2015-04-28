@@ -41,18 +41,21 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '    <div class="panel-heading">\n' +
     '        <div class="pull-right edit-buttons" ng-if="!editDetail && !!editTemplate">\n' +
     '            <div class="btn-group">\n' +
-    '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"><span\n' +
-    '                        class="glyphicon glyphicon-trash"></span>\n' +
+    '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"\n' +
+    '                        cat-element-visible="cat.base.delete" cat-element-data="catBaseListController.config">\n' +
+    '                    <span class="glyphicon glyphicon-trash"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.delete">Delete</span>\n' +
     '                </button>\n' +
     '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
+    '                        cat-element-visible="cat.base.edit" cat-element-data="catBaseListController.config"\n' +
     '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.edit">Edit</span>\n' +
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
-    '            <a ui-sref="^.detail({id: \'new\'})" class="btn btn-xs btn-default"><span\n' +
-    '                    class="glyphicon glyphicon-plus"></span>\n' +
+    '            <a ui-sref="^.detail({id: \'new\'})" class="btn btn-xs btn-default"\n' +
+    '               cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
+    '                <span class="glyphicon glyphicon-plus"></span>\n' +
     '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
     '        <h5 ng-if="exists">{{title()}}</h5>\n' +
@@ -77,7 +80,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '            <span cat-i18n="cc.catalysts.general.save">Save</span>\n' +
     '        </button>\n' +
     '    </div>\n' +
-    '    </div>\n' +
+    '</div>\n' +
     '</div>\n' +
     '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
     '     ng-controller="baseTabsController"></div>');
@@ -87,7 +90,8 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-list.tpl.html',
     '<h2>\n' +
     '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
-    '    <a class="btn btn-primary pull-right" ui-sref="{{catBaseListController.config.name}}.detail({id: \'new\'})">\n' +
+    '    <a class="btn btn-primary pull-right" ui-sref="{{catBaseListController.config.name}}.detail({id: \'new\'})"\n' +
+    '            cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
     '        <span class="glyphicon glyphicon-plus"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
     '    </a>\n' +
     '</h2>\n' +
@@ -129,7 +133,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
     '<ul class="nav navbar-nav">\n' +
-    '    <li class="dropdown" ng-repeat="menu in menus" dropdown="">\n' +
+    '    <li class="dropdown" ng-repeat="menu in getMenus()" dropdown="">\n' +
     '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)" dropdown-toggle="">\n' +
     '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span> <b\n' +
     '                class="caret"></b>\n' +
