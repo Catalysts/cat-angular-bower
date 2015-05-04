@@ -544,15 +544,11 @@ angular.module('cat.controller.base.list', ['cat.service.breadcrumbs'])
 function CatBaseTabsController($scope, $controller, $stateParams, $location, catElementVisibilityService, config) {
     var endpoint = config.endpoint;
 
-    $scope.tabs = config.tabs;
-    $scope.tabNames = _.map(config.tabs, 'name');
+    $scope.tabs = _.filter(config.tabs, function(tab) {
+        return catElementVisibilityService.isVisible('cat.base.tab', tab);
+    });
+    $scope.tabNames = _.map($scope.tabs, 'name');
     $scope.activeTab = {};
-
-    $scope.getVisibleTabs = function() {
-        return _.filter($scope.tabs, function(tab) {
-            return catElementVisibilityService.isVisible('cat.base.tab', tab);
-        });
-    };
 
     $scope.activateTab = function (tab) {
         $scope.$broadcast('tab-' + tab + '-active');
@@ -1171,7 +1167,11 @@ angular.module('cat.directives.paginated',
                     }
                 }
 
-                $scope.$watch('listData.pagination', function () {
+                $scope.$watch('listData.pagination', function (newVal, oldVal) {
+                    // TODO check wheter or not this is necessary with angular >= 1.3
+                    if (angular.equals(newVal, oldVal)) {
+                        return;
+                    }
                     searchRequest.pagination($scope.listData.pagination);
                     updateLocation();
                     reload();
@@ -1184,16 +1184,24 @@ angular.module('cat.directives.paginated',
                     reload(delay);
                 };
 
-                var updateSearch = function (value) {
+                var updateSearch = function (newVal, oldVal) {
+                    // TODO check wheter or not this is necessary with angular >= 1.3
+                    if (angular.equals(newVal, oldVal)) {
+                        return;
+                    }
                     var search = searchRequest.search();
-                    _.assign(search, value);
-                    searchChanged(value, DELAY_ON_SEARCH);
+                    _.assign(search, newVal);
+                    searchChanged(newVal, DELAY_ON_SEARCH);
                 };
 
                 $scope.$watch('listData.search', updateSearch, true);
 
-                this.sort = function (value) {
-                    searchRequest.sort(value);
+                this.sort = function (newVal, oldVal) {
+                    // TODO check wheter or not this is necessary with angular >= 1.3
+                    if (angular.equals(newVal, oldVal)) {
+                        return;
+                    }
+                    searchRequest.sort(newVal);
                     updateLocation();
                     $scope.listData.pagination.page = 1;
                     reload();
@@ -1506,6 +1514,39 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+'use strict';
+
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+.filter('replaceText', function CatReplaceTetFilter() {
+    return function (text, pattern, options, replacement) {
+        if (pattern === undefined)
+            pattern = '\n';
+        if (options === undefined)
+            options = 'g';
+        if (replacement === undefined)
+            replacement = ', ';
+        if (!text) {
+            return text;
+        } else {
+            return String(text).replace(new RegExp(pattern, options), replacement);
+        }
+    };
+});
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -3593,39 +3634,6 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
         self.clearMessages();
     });
 }]);
-
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-.filter('replaceText', function CatReplaceTetFilter() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === undefined)
-            pattern = '\n';
-        if (options === undefined)
-            options = 'g';
-        if (replacement === undefined)
-            replacement = ', ';
-        if (!text) {
-            return text;
-        } else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
-});
 
 /**
  * Created by tscheinecker on 26.08.2014.

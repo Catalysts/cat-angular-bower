@@ -20,7 +20,7 @@ define(['angular', 'angular-ui-bootstrap'], function(angular) {
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
     '<tabset>\n' +
-    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in getVisibleTabs()">\n' +
+    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
     '        <tab-heading>\n' +
     '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> {{getTabName(tab.name)}}\n' +
     '        </tab-heading>\n' +
