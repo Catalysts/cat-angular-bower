@@ -20,7 +20,7 @@
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
     '<tabset>\n' +
-    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
+    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in getVisibleTabs()">\n' +
     '        <tab-heading>\n' +
     '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> {{getTabName(tab.name)}}\n' +
     '        </tab-heading>\n' +
@@ -42,19 +42,19 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '        <div class="pull-right edit-buttons" ng-if="!editDetail && !!editTemplate">\n' +
     '            <div class="btn-group">\n' +
     '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"\n' +
-    '                        cat-element-visible="cat.base.delete" cat-element-data="catBaseListController.config">\n' +
+    '                        cat-element-visible="cat.base.delete" cat-element-data="config">\n' +
     '                    <span class="glyphicon glyphicon-trash"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.delete">Delete</span>\n' +
     '                </button>\n' +
     '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
-    '                        cat-element-visible="cat.base.edit" cat-element-data="catBaseListController.config"\n' +
+    '                        cat-element-visible="cat.base.edit" cat-element-data="config"\n' +
     '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.edit">Edit</span>\n' +
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
     '            <a ui-sref="^.detail({id: \'new\'})" class="btn btn-xs btn-default"\n' +
-    '               cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
+    '               cat-element-visible="cat.base.new" cat-element-data="config">\n' +
     '                <span class="glyphicon glyphicon-plus"></span>\n' +
     '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
@@ -175,6 +175,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '                    next-text="{{paginationText.next}}"\n' +
     '                    first-text="{{paginationText.first}}"\n' +
     '                    last-text="{{paginationText.last}}">\n' +
+    '        </pagination>\n' +
     '    </div>\n' +
     '    <div class="text-center">\n' +
     '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0"\n' +
