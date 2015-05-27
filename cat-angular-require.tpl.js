@@ -135,23 +135,32 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '<ul class="nav navbar-nav">\n' +
     '    <li class="dropdown" ng-repeat="menu in getMenus()" dropdown="">\n' +
     '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)" dropdown-toggle="">\n' +
-    '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span> <b\n' +
-    '                class="caret"></b>\n' +
+    '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span>\n' +
+    '            <b class="caret"></b>\n' +
     '        </a>\n' +
     '        <ul class="dropdown-menu" ng-if="isVisible(menu)">\n' +
     '            <li ng-repeat="entry in menu.getFlattened() track by entry.id" ng-if="isVisible(entry)"\n' +
-    '                ng-class="{\'dropdown-header\': entry.isGroup()}"\n' +
-    '                ng-switch data-on="entry.isGroup()">\n' +
-    '                <a ng-href="#{{entry.getOptions().path}}" ng-switch-when="false">\n' +
-    '                    <span cat-i18n="cc.catalysts.cat-menu.entry.{{entry.completeId}}">\n' +
-    '                        {{entry.getOptions().name}}\n' +
-    '                    </span> <span ng-if="entry.getOptions().keymap"\n' +
-    '                                  class="text-muted">{{entry.getOptions().keymap}}</span>\n' +
+    '                ng-class="{\'dropdown-header\': entry.isGroup() && !entry.isSubMenu(), \'dropdown dropdown-submenu\' : entry.isSubMenu()}">\n' +
+    '                <a ng-if="!entry.isGroup()" ng-href="#{{entry.getOptions().path}}">\n' +
+    '                    <span cat-i18n="cc.catalysts.cat-menu.entry.{{entry.completeId}}">{{entry.getOptions().name}}</span>\n' +
+    '                    <span ng-if="entry.getOptions().keymap" class="text-muted">{{entry.getOptions().keymap}}</span>\n' +
     '                </a>\n' +
-    '                <span ng-switch-default\n' +
+    '                <span ng-if="entry.isGroup() && !entry.isSubMenu()"\n' +
     '                      cat-i18n="cc.catalysts.cat-menu.group.{{entry.completeId}}">\n' +
     '                    {{entry.getOptions().name}}\n' +
     '                </span>\n' +
+    '                <a ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" href="" class="dropdown-toggle" data-toggle="dropdown">\n' +
+    '                    <span cat-i18n="cc.catalysts.cat-menu.group.{{menu.completeId}}">{{entry.getOptions().name}}</span>\n' +
+    '                    <ul ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" class="dropdown-menu">\n' +
+    '                        <li ng-repeat="entry in entry.subEntries track by entry.id" ng-if="isVisible(entry)">\n' +
+    '                            <a ng-href="#{{entry.getOptions().path}}" ng-if="!entry.isGroup()">\n' +
+    '                                <span cat-i18n="cc.catalysts.cat-menu.entry.{{entry.completeId}}">\n' +
+    '                                    {{entry.getOptions().name}}\n' +
+    '                                </span>\n' +
+    '                            </a>\n' +
+    '                        </li>\n' +
+    '                    </ul>\n' +
+    '                </a>\n' +
     '            </li>\n' +
     '        </ul>\n' +
     '    </li>\n' +

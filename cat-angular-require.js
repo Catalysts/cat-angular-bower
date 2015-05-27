@@ -26,6 +26,213 @@ define([
             'use strict';
 'use strict';
 
+window.cat = window.cat || {};
+
+/**
+ /**
+ * @ngdoc function
+ * @name cat.FacetTerm
+ * @module cat
+ *
+ * @description
+ * A 'FacetTerm' model used in conjunction with the cat-paginated directive where it represents a value of a group or
+ * property which can be used to filter the shown list.
+ * It consist of an id, a name and a count
+ *
+ * @param {Object} [data={}] the data used instantiate the object with. Usually this is the object representation
+ * returned from the server.
+ * @constructor
+ */
+window.cat.FacetTerm = function (data) {
+    if (data === undefined) data = {};
+
+    this.id = data.id;
+    this.name = data.name;
+    this.count = data.count;
+};
+
+/**
+ * @ngdoc overview
+ * @name Facet
+ *
+ * @description
+ * A 'Facet' model which is used in conjunction with the cat-paginated directive where it represents a group or
+ * which property which can be used to filter the shown list.
+ * It has a name and an array of FacetTerms
+ *
+ * @param {Object} [data={}] the data used instantiate the object with. Usually this is the object representation
+ * returned from the server.
+ * @constructor
+ */
+window.cat.Facet = function (data) {
+    if (data === undefined) data = {};
+
+    this.name = data.name;
+    this.terms = _.map(data.facets, function (facet) {
+        return new window.cat.FacetTerm(facet);
+    });
+};
+'use strict';
+
+window.cat = window.cat || {};
+
+/**
+ * @ngdoc function
+ * @name cat.SearchRequest
+ * @module cat
+ *
+ * @description
+ * A 'SearchRequest' model used by the catApiService to provide the backend with certain filter, order, page and size
+ * parameters.
+ *
+ *
+ * @param {Object} [searchUrlParams] an object representing the search parameters of the current url, which are
+ * used to initialize the properties of the SearchRequest
+ * @constructor
+ */
+window.cat.SearchRequest = function (searchUrlParams) {
+
+    var _pagination = {
+        page: 1,
+        size: 100
+    };
+    var _sort = {};
+    var _search = {};
+    var _dirty = false;
+
+    var lastEncoded;
+
+    if (!!searchUrlParams && !_.isEmpty(searchUrlParams)) {
+        _pagination.page = searchUrlParams.page || _pagination.page;
+        _pagination.size = searchUrlParams.size || _pagination.size;
+        _sort.property = searchUrlParams.sort || _sort.property;
+        _sort.isDesc = searchUrlParams.rev || _sort.isDesc;
+        _.forEach(_.keys(searchUrlParams), function (param) {
+            if (param.indexOf('search.') > -1 && param.length > 7) {
+                _search[param.substring(7)] = searchUrlParams[param];
+            }
+        });
+    }
+
+    var _encodeSort = function () {
+        return (!!_sort.property ? 'sort=' + _sort.property + ':' + ((_sort.isDesc === true || _sort.isDesc === 'true') ? 'desc' : 'asc') : '');
+    };
+
+    var _encodePagination = function () {
+        return 'page=' + (!!_pagination.page ? Math.max(0, _pagination.page - 1) : 0) + '&size=' + _pagination.size || 100;
+    };
+
+    var _concatenate = function (result, next) {
+        if (!result) {
+            return next;
+        }
+
+        if (!next) {
+            return result;
+        }
+        return result + '&' + next;
+    };
+
+    var _encodeSearch = function () {
+        if (!!_search && !_.isEmpty(_search)) {
+            return $.param(_search, true);
+        }
+
+        return '';
+    };
+
+    var urlEndoded = function () {
+        return _([_encodePagination(), _encodeSort(), _encodeSearch()]).reduce(_concatenate);
+    };
+
+    /**
+     * @param {Object} [pagination] if given this object overrides the current 'pagination' state
+     * @returns {{}} the object representing the current pagination state
+     */
+    this.pagination = function (pagination) {
+        if (pagination === undefined) {
+            return _pagination;
+        } else {
+            _pagination = pagination;
+            _dirty = true;
+            return _pagination;
+        }
+    };
+
+
+    /**
+     * @param {Object} [sort] if given this object overrides the current 'sort' state
+     * @returns {{}} the object representing the current sort state
+     */
+    this.sort = function (sort) {
+        if (sort === undefined) {
+            return _sort;
+        } else {
+            _sort = sort;
+            _dirty = true;
+            return _sort;
+        }
+    };
+
+    /**
+     * @param {Object} [search] if given this object overrides the current 'search' state
+     * @returns {{}} the object representing the current search state
+     */
+    this.search = function (search) {
+        if (search === undefined) {
+            return _search;
+        } else {
+            _search = search;
+            _dirty = true;
+            return _search;
+        }
+    };
+
+    /**
+     * @deprecated use catSearchService#encodeAsUrl instead
+     *
+     * @returns {String} a string representation of the current SearchRequest which can be used as part of the request
+     * url
+     */
+    this.urlEncoded = function () {
+        lastEncoded = urlEndoded();
+        return lastEncoded;
+    };
+
+    this.setPristine = function () {
+        _dirty = false;
+    };
+
+    /**
+     * @returns {boolean} <code>true</code> if something changed since the last time {@link this#urlEncoded} was called
+     */
+    this.isDirty = function () {
+        return _dirty;
+    };
+
+    /**
+     * @deprecated use catSearchService#updateLocation instead
+     *
+     * A small helper function to update the current url to correctly reflect all properties set within this
+     * SearchRequest
+     * @param $location the angular $location service
+     */
+    this.setSearch = function ($location) {
+        var ret = {};
+        ret.page = _pagination.page;
+        ret.size = _pagination.size;
+        if (!!_sort.property) {
+            ret.sort = _sort.property;
+            ret.rev = _sort.isDesc || false;
+        }
+        _.forEach(_.keys(_search), function (s) {
+            ret['search.' + s] = _search[s];
+        });
+        $location.search(ret);
+    };
+};
+'use strict';
+
 /**
  * @ngdoc controller
  * @name cat.controller.base.detail:CatBaseDetailController
@@ -458,213 +665,6 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
 
 angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
-'use strict';
-
-window.cat = window.cat || {};
-
-/**
- /**
- * @ngdoc function
- * @name cat.FacetTerm
- * @module cat
- *
- * @description
- * A 'FacetTerm' model used in conjunction with the cat-paginated directive where it represents a value of a group or
- * property which can be used to filter the shown list.
- * It consist of an id, a name and a count
- *
- * @param {Object} [data={}] the data used instantiate the object with. Usually this is the object representation
- * returned from the server.
- * @constructor
- */
-window.cat.FacetTerm = function (data) {
-    if (data === undefined) data = {};
-
-    this.id = data.id;
-    this.name = data.name;
-    this.count = data.count;
-};
-
-/**
- * @ngdoc overview
- * @name Facet
- *
- * @description
- * A 'Facet' model which is used in conjunction with the cat-paginated directive where it represents a group or
- * which property which can be used to filter the shown list.
- * It has a name and an array of FacetTerms
- *
- * @param {Object} [data={}] the data used instantiate the object with. Usually this is the object representation
- * returned from the server.
- * @constructor
- */
-window.cat.Facet = function (data) {
-    if (data === undefined) data = {};
-
-    this.name = data.name;
-    this.terms = _.map(data.facets, function (facet) {
-        return new window.cat.FacetTerm(facet);
-    });
-};
-'use strict';
-
-window.cat = window.cat || {};
-
-/**
- * @ngdoc function
- * @name cat.SearchRequest
- * @module cat
- *
- * @description
- * A 'SearchRequest' model used by the catApiService to provide the backend with certain filter, order, page and size
- * parameters.
- *
- *
- * @param {Object} [searchUrlParams] an object representing the search parameters of the current url, which are
- * used to initialize the properties of the SearchRequest
- * @constructor
- */
-window.cat.SearchRequest = function (searchUrlParams) {
-
-    var _pagination = {
-        page: 1,
-        size: 100
-    };
-    var _sort = {};
-    var _search = {};
-    var _dirty = false;
-
-    var lastEncoded;
-
-    if (!!searchUrlParams && !_.isEmpty(searchUrlParams)) {
-        _pagination.page = searchUrlParams.page || _pagination.page;
-        _pagination.size = searchUrlParams.size || _pagination.size;
-        _sort.property = searchUrlParams.sort || _sort.property;
-        _sort.isDesc = searchUrlParams.rev || _sort.isDesc;
-        _.forEach(_.keys(searchUrlParams), function (param) {
-            if (param.indexOf('search.') > -1 && param.length > 7) {
-                _search[param.substring(7)] = searchUrlParams[param];
-            }
-        });
-    }
-
-    var _encodeSort = function () {
-        return (!!_sort.property ? 'sort=' + _sort.property + ':' + ((_sort.isDesc === true || _sort.isDesc === 'true') ? 'desc' : 'asc') : '');
-    };
-
-    var _encodePagination = function () {
-        return 'page=' + (!!_pagination.page ? Math.max(0, _pagination.page - 1) : 0) + '&size=' + _pagination.size || 100;
-    };
-
-    var _concatenate = function (result, next) {
-        if (!result) {
-            return next;
-        }
-
-        if (!next) {
-            return result;
-        }
-        return result + '&' + next;
-    };
-
-    var _encodeSearch = function () {
-        if (!!_search && !_.isEmpty(_search)) {
-            return $.param(_search, true);
-        }
-
-        return '';
-    };
-
-    var urlEndoded = function () {
-        return _([_encodePagination(), _encodeSort(), _encodeSearch()]).reduce(_concatenate);
-    };
-
-    /**
-     * @param {Object} [pagination] if given this object overrides the current 'pagination' state
-     * @returns {{}} the object representing the current pagination state
-     */
-    this.pagination = function (pagination) {
-        if (pagination === undefined) {
-            return _pagination;
-        } else {
-            _pagination = pagination;
-            _dirty = true;
-            return _pagination;
-        }
-    };
-
-
-    /**
-     * @param {Object} [sort] if given this object overrides the current 'sort' state
-     * @returns {{}} the object representing the current sort state
-     */
-    this.sort = function (sort) {
-        if (sort === undefined) {
-            return _sort;
-        } else {
-            _sort = sort;
-            _dirty = true;
-            return _sort;
-        }
-    };
-
-    /**
-     * @param {Object} [search] if given this object overrides the current 'search' state
-     * @returns {{}} the object representing the current search state
-     */
-    this.search = function (search) {
-        if (search === undefined) {
-            return _search;
-        } else {
-            _search = search;
-            _dirty = true;
-            return _search;
-        }
-    };
-
-    /**
-     * @deprecated use catSearchService#encodeAsUrl instead
-     *
-     * @returns {String} a string representation of the current SearchRequest which can be used as part of the request
-     * url
-     */
-    this.urlEncoded = function () {
-        lastEncoded = urlEndoded();
-        return lastEncoded;
-    };
-
-    this.setPristine = function () {
-        _dirty = false;
-    };
-
-    /**
-     * @returns {boolean} <code>true</code> if something changed since the last time {@link this#urlEncoded} was called
-     */
-    this.isDirty = function () {
-        return _dirty;
-    };
-
-    /**
-     * @deprecated use catSearchService#updateLocation instead
-     *
-     * A small helper function to update the current url to correctly reflect all properties set within this
-     * SearchRequest
-     * @param $location the angular $location service
-     */
-    this.setSearch = function ($location) {
-        var ret = {};
-        ret.page = _pagination.page;
-        ret.size = _pagination.size;
-        if (!!_sort.property) {
-            ret.sort = _sort.property;
-            ret.rev = _sort.isDesc || false;
-        }
-        _.forEach(_.keys(_search), function (s) {
-            ret['search.' + s] = _search[s];
-        });
-        $location.search(ret);
-    };
-};
 'use strict';
 
 /**
@@ -1575,6 +1575,55 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.general.new': 'New'
 });
 
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 'use strict';
 
 /**
@@ -3415,6 +3464,10 @@ function MenuGroup(groupId, options, parent) {
     this.isMenu = function () {
         return false;
     };
+
+    this.isSubMenu = function() {
+        return (_options.displayAsSubMenu === true);
+    };
 }
 
 function Menu(menuId, options) {
@@ -3433,7 +3486,11 @@ function Menu(menuId, options) {
         if (_.isUndefined(groupId)) {
             _menuEntries.push(new MenuEntry(menuEntryId, options, that));
         } else {
-            _menuGroups[groupId].addMenuEntry(menuEntryId, options);
+            var menuGroup = _menuGroups[groupId];
+            if (!menuGroup) {
+                throw new Error('No menu group for id \''+groupId+'\' available');
+            }
+            menuGroup.addMenuEntry(menuEntryId, options);
         }
     };
 
@@ -3456,7 +3513,12 @@ function Menu(menuId, options) {
 
     this.getFlattened = function () {
         return _.flatten([_menuEntries, _.map(this.getGroups(), function (group) {
-            return[group, group.getEntries()];
+            if (group.getOptions().displayAsSubMenu === true) {
+                group.subEntries = group.getEntries();
+                return[group];
+            } else {
+                return[group, group.getEntries()];
+            }
         })]);
     };
 
@@ -3635,55 +3697,6 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
     });
 }]);
 
-/**
- * Created by tscheinecker on 26.08.2014.
- */
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 window.cat = {};
 
 angular.module('cat.filters', ['cat.filters.replaceText']);
