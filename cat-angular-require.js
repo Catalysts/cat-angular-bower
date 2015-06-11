@@ -1542,55 +1542,6 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
 
 angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
-/**
- * Created by tscheinecker on 26.08.2014.
- */
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 'use strict';
 
 
@@ -3693,6 +3644,55 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
     });
 }]);
 
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 window.cat = {};
 
 angular.module('cat.filters', ['cat.filters.replaceText']);
