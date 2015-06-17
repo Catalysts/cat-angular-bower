@@ -702,6 +702,34 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
 
 angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
+
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
+
 'use strict';
 
 /**
@@ -1551,34 +1579,6 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
-});
-
 'use strict';
 
 
@@ -1612,6 +1612,55 @@ angular.module('cat.filters.replaceText', [])
     };
 });
 
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 'use strict';
 
 /**
@@ -1916,7 +1965,6 @@ function EndpointConfig(name, config) {
 
 function CatApiServiceProvider() {
     var _endpoints = {};
-    var _urlPrefix = '/api/';
 
     /**
      * This method is used to either create or retrieve named endpoint configurations.
@@ -1932,11 +1980,11 @@ function CatApiServiceProvider() {
     };
 
 
-    this.$get = ['$http', 'catConversionService', 'catSearchService',
+    this.$get = ['$http', 'catConversionService', 'catSearchService', 'CAT_API_SERVICE_DEFAULTS',
         /**
          * @return {object} returns a map from names to CatApiEndpoints
          */
-            function $getCatApiService($http, catConversionService, catSearchService) {
+            function $getCatApiService($http, catConversionService, catSearchService, CAT_API_SERVICE_DEFAULTS) {
             var catApiService = {};
 
             var dynamicEndpoints = {};
@@ -1956,14 +2004,14 @@ function CatApiServiceProvider() {
                     if (_.isUndefined(settings)) {
                         throw new Error('Undefined dynamic endpoint settings');
                     }
-                    dynamicEndpoints[name] = new CatApiEndpoint(_urlPrefix,
+                    dynamicEndpoints[name] = new CatApiEndpoint(CAT_API_SERVICE_DEFAULTS.endpointUrlPrefix,
                         new EndpointConfig(name, settings), $http, catConversionService, catSearchService);
                 }
                 return dynamicEndpoints[name];
             };
 
             _.forEach(_.keys(_endpoints), function (path) {
-                catApiService[path] = new CatApiEndpoint(_urlPrefix, _endpoints[path], $http, catConversionService, catSearchService);
+                catApiService[path] = new CatApiEndpoint(CAT_API_SERVICE_DEFAULTS.endpointUrlPrefix, _endpoints[path], $http, catConversionService, catSearchService);
             });
 
             return catApiService;
@@ -1980,7 +2028,10 @@ function CatApiServiceProvider() {
  *
  * @constructor
  */
-angular.module('cat.service.api', ['cat.service.conversion', 'cat.service.search']).provider('catApiService', CatApiServiceProvider);
+angular
+    .module('cat.service.api', ['cat.service.conversion', 'cat.service.search'])
+    .constant('CAT_API_SERVICE_DEFAULTS', {endpointUrlPrefix: '/api/'})
+    .provider('catApiService', CatApiServiceProvider);
 
 /**
  * @ngdoc service
@@ -3681,54 +3732,5 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
     });
 }]);
 
-/**
- * Created by tscheinecker on 26.08.2014.
- */
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 })(window.jQuery, window._, window.angular);
 //# sourceMappingURL=cat-angular.js.map
