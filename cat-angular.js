@@ -702,34 +702,6 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
 
 angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
-});
-
 'use strict';
 
 /**
@@ -1613,54 +1585,33 @@ angular.module('cat.filters.replaceText', [])
 });
 
 /**
- * Created by tscheinecker on 26.08.2014.
+ * Created by tscheinecker on 23.10.2014.
  */
 'use strict';
 
-window.cat.util = window.cat.util || {};
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
 
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu'
+});
 
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
 /**
- * Created by tscheinecker on 01.08.2014.
+ * Created by tscheinecker on 23.10.2014.
  */
-
 'use strict';
 
-window.cat.util = window.cat.util || {};
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
 
-window.cat.models = window.cat.models || {};
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New'
+});
 
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 'use strict';
 
 /**
@@ -3400,14 +3351,22 @@ angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service
  * @name cat.service.loading:loadingService
  */
 angular.module('cat.service.loading', ['angularSpinner'])
-    .factory('loadingService', ["$rootScope", "usSpinnerService", "$timeout", function CatLoadingService($rootScope, usSpinnerService, $timeout) {
-        var timeout = 50;
-        var animationDuration = 200;
+    .constant('CAT_LOADING_SERVICE_DEFAULTS', {
+        timeout: 50,
+        animationDuration: 200
+    })
+    .service('loadingService', [
+        '$rootScope',
+        '$timeout',
+        'usSpinnerService',
+        'CAT_LOADING_SERVICE_DEFAULTS',
+        function CatLoadingService($rootScope, $timeout, usSpinnerService, CAT_LOADING_SERVICE_DEFAULTS) {
+            var that = this;
         var activeCount = 0;
         var startTime;
         var startTimer, stopTimer;
 
-        var start = function () {
+            this.start = function () {
             if (!activeCount && !startTimer) {
                 if (!!stopTimer) {
                     $timeout.cancel(stopTimer);
@@ -3417,12 +3376,12 @@ angular.module('cat.service.loading', ['angularSpinner'])
                     usSpinnerService.spin('loading-spinner');
                     $rootScope.loading = true;
                     startTime = new Date().getTime();
-                }, timeout);
+                }, CAT_LOADING_SERVICE_DEFAULTS.timeout);
             }
             activeCount++;
         };
 
-        var stop = function () {
+            this.stop = function () {
             activeCount--;
             if (!activeCount && !stopTimer) {
                 if (!!startTimer) {
@@ -3430,7 +3389,7 @@ angular.module('cat.service.loading', ['angularSpinner'])
                     startTimer = undefined;
                 }
                 var now = new Date().getTime();
-                var stopTimeout = timeout + (Math.max((animationDuration - (now - startTime)), 0));
+                var stopTimeout = CAT_LOADING_SERVICE_DEFAULTS.timeout + (Math.max((CAT_LOADING_SERVICE_DEFAULTS.animationDuration - (now - startTime)), 0));
                 stopTimer = $timeout(function () {
                     usSpinnerService.stop('loading-spinner');
                     $rootScope.loading = false;
@@ -3439,21 +3398,16 @@ angular.module('cat.service.loading', ['angularSpinner'])
         };
 
         $rootScope.$on('$stateChangeStart', function (event) {
-            start();
+            that.start();
 
         });
         $rootScope.$on('$stateChangeSuccess', function (event) {
-            stop();
+            that.stop();
         });
         $rootScope.$on('$stateChangeError', function (event) {
-            stop();
+            that.stop();
         });
-
-        return {
-            start: start,
-            stop: stop
-        };
-    }]);
+        }]);
 
 'use strict';
 
@@ -3732,5 +3686,54 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
     });
 }]);
 
+/**
+ * Created by tscheinecker on 26.08.2014.
+ */
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+
+};
+
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 })(window.jQuery, window._, window.angular);
 //# sourceMappingURL=cat-angular.js.map
