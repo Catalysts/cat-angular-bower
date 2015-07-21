@@ -609,7 +609,15 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
     };
 
     var _getDefaultTabControllerName = function (tab) {
-        return window.cat.util.capitalize(endpoint.getEndpointName()) + window.cat.util.capitalize(tab.name) + 'Controller';
+        var name = window.cat.util.capitalize(endpoint.getEndpointName());
+        var parentEndpoint = endpoint.parentEndpoint;
+
+        while (parentEndpoint) {
+            name = window.cat.util.capitalize(parentEndpoint.getEndpointName()) + name;
+            parentEndpoint = parentEndpoint.parentEndpoint;
+        }
+
+        return name + window.cat.util.capitalize(tab.name) + 'Controller';
     };
 
     var _getTabControllerName = function (tab) {
@@ -661,39 +669,6 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
 CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
 
 angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-.filter('replaceText', function CatReplaceTetFilter() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === undefined)
-            pattern = '\n';
-        if (options === undefined)
-            options = 'g';
-        if (replacement === undefined)
-            replacement = ', ';
-        if (!text) {
-            return text;
-        } else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
-});
-
 'use strict';
 
 /**
@@ -1569,6 +1544,39 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
     'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
     'cc.catalysts.general.new': 'New'
+});
+
+'use strict';
+
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+.filter('replaceText', function CatReplaceTetFilter() {
+    return function (text, pattern, options, replacement) {
+        if (pattern === undefined)
+            pattern = '\n';
+        if (options === undefined)
+            options = 'g';
+        if (replacement === undefined)
+            replacement = ', ';
+        if (!text) {
+            return text;
+        } else {
+            return String(text).replace(new RegExp(pattern, options), replacement);
+        }
+    };
 });
 
 'use strict';
