@@ -22,7 +22,8 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '<tabset>\n' +
     '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
     '        <tab-heading>\n' +
-    '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> {{getTabName(tab.name)}}\n' +
+    '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> <span\n' +
+    '                cat-i18n="{{getTabKey(tab.name)}}">{{getTabName(tab.name)}}</span>\n' +
     '        </tab-heading>\n' +
     '        <div ng-include="getTabTemplate(tab.name)" ng-controller="tabController"></div>\n' +
     '    </tab>\n' +

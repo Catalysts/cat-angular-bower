@@ -269,6 +269,450 @@ window.cat.SearchRequest = function (searchUrlParams) {
 'use strict';
 
 /**
+ * @ngdoc controller
+ * @name cat.controller.base.detail:CatBaseDetailController
+ * @module cat.controller.base.detail
+ *
+ * @description
+ * The CatBaseDetailController takes care of providing several common properties and functions to the scope
+ * of every detail page. It also instantiates the controller given via the config.controller parameter and shares
+ * the same scope with it.
+ *
+ * Common properties include:
+ * * detail - the actual object to view
+ * * editDetail - a copy of the detail object used for editing
+ * * breadcrumbs - the breadcrumbs array
+ * * uiStack - the ui stack array if parents exist
+ * * editTemplate - the url of the edit template
+ * * mainViewTemplate - the url of the main view template
+ * * additionalViewTemplate - the url of the additional view template if it exists
+ *
+ * Common functions include:
+ * * save - the save function to update / create an object
+ * * edit - a function to switch from view to edit mode
+ * * cancelEdit - a function to switch from edit to view mode (discarding all changes)
+ * * add - a function to switch into edit mode of a new object
+ * * remove - a function to delete the current object
+ * * title - a function to resolve a 'title' of the current object
+ *
+ * @param {object} $scope DOCTODO
+ * @param {object} $state DOCTODO
+ * @param {object} $stateParams DOCTODO
+ * @param {object} $location DOCTODO
+ * @param {object} $window DOCTODO
+ * @param {object} $globalMessages DOCTODO
+ * @param {object} $controller DOCTODO
+ * @param {object} $log DOCTODO
+ * @param {object} catValidationService DOCTODO
+ * @param {object} catBreadcrumbsService DOCTODO
+ * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
+ */
+function CatBaseDetailController($scope, $state, $stateParams, $location, $window, $globalMessages, $controller, $log, catValidationService, catBreadcrumbsService, config) {
+    $scope.detail = config.detail;
+    $scope.editDetail = undefined;
+
+    $scope.config = config;
+    var endpoint = config.endpoint;
+    var templateUrls = config.templateUrls;
+    var Model = config.Model;
+
+    $scope.uiStack = catBreadcrumbsService.generateFromConfig(config);
+
+    if ($stateParams.id === 'new') {
+        catBreadcrumbsService.push({
+            title: 'New',
+            key: 'cc.catalysts.general.new'
+        });
+    } else {
+        catBreadcrumbsService.push({});
+    }
+
+    $scope.editTemplate = templateUrls.edit;
+
+    if (_.isObject(templateUrls.view)) {
+        $scope.mainViewTemplate = templateUrls.view.main;
+        $scope.additionalViewTemplate = templateUrls.view.additional;
+    } else {
+        $scope.mainViewTemplate = templateUrls.view;
+    }
+
+    /**
+     * @returns {String|Number} A title of the current object or the 'id' as fallback
+     */
+    $scope.title = function () {
+        var data = $scope.detail;
+        if (_.isUndefined(data)) {
+            return '';
+        }
+        return !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
+    };
+
+    var update = function () {
+        catBreadcrumbsService.replaceLast({
+            title: $scope.title()
+        });
+    };
+
+    /**
+     * reloads the current object from the server
+     */
+    $scope.reloadDetails = function () {
+        endpoint.get($stateParams.id).then(function (data) {
+            $scope.detail = data;
+            update();
+        });
+    };
+
+    $scope.exists = !!$stateParams.id && $stateParams.id !== 'new';
+
+    /**
+     * Creates a new copy of the given model and sets its parent if applicable.
+     * Triggers a switch into the edit mode
+     */
+    $scope.add = function () {
+        $scope.editDetail = new Model();
+        if (_.isFunction($scope.editDetail.setParent)) {
+            $scope.editDetail.setParent(config.parents[0]);
+        }
+    };
+
+    /**
+     * Creates a copy of the current object and triggers a switch into edit mode
+     */
+    $scope.edit = function () {
+        if (_.isFunction($scope.detail.setParent)) {
+            $scope.detail.setParent(config.parents[0]);
+        }
+        $scope.editDetail = angular.copy($scope.detail);
+    };
+
+    /**
+     * Either cancels the current edit of an object by resetting it or triggers a history back event if the 'new' mode
+     * is active
+     */
+    $scope.cancelEdit = function () {
+        catValidationService.clearValidationErrors();
+        $scope.$broadcast('formReset');
+        if ($scope.exists) {
+            $scope.editDetail = undefined;
+            $globalMessages.clearMessages();
+        } else {
+            $window.history.back();
+        }
+    };
+
+    /**
+     * Calls the remove function of the current endpoint and redirects to the ^.list upon success
+     */
+    $scope.remove = function () {
+        endpoint.remove($scope.detail.id).then(function () {
+            if (_.isEmpty($scope.uiStack)) {
+                $state.go('^.list');
+            } else {
+                var url = $state.href('^.^');
+                $location.url(url.substring(1, url.length));
+                $location.search('tab', endpoint.getEndpointName());
+            }
+        });
+    };
+
+    /**
+     * Calls the save function of the current endpoint.
+     * Upon success the view mode of the details of the currently created / updated object will be shown.
+     * Upon an error the reported errors (global & field errors) will be shown to the user and the edit mode
+     * will remain active.
+     *
+     * * @param {object} stayInEdit If true the view stays in detail edit state after save instead of switching to
+     *                              detail view state.
+     */
+    $scope.save = function (stayInEdit) {
+        // When passing data to an asynchronous method, it makes sense to clone it.
+        endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
+            $globalMessages.clearMessages();
+            catValidationService.clearValidationErrors();
+            if (stayInEdit){
+                $scope.editDetail = data;
+                // Refresh-Breadcrumb:
+                $scope.reloadDetails();
+            } else {
+                if (!$scope.exists) {
+                    $scope.$broadcast('formReset');
+                    $state.go('.', {id: data.id});
+                } else {
+                    $scope.editDetail = undefined;
+                    $scope.detail = data;
+                    update();
+                }
+            }
+        });
+    };
+
+    // TABS
+    $scope.baseTabsController = ['$scope', function ($tabsScope) {
+        $controller('CatBaseTabsController', {
+            $scope: $tabsScope,
+            config: config
+        });
+    }];
+
+    try {
+        // extend with custom controller
+        $controller(config.controller, {
+            $scope: $scope,
+            detail: config.detail,
+            parents: config.parents,
+            config: config
+        });
+    } catch (unused) {
+        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
+    }
+
+    if ($scope.exists) {
+        update();
+    } else {
+        $scope.edit();
+    }
+}
+CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catValidationService", "catBreadcrumbsService", "config"];
+
+angular.module('cat.controller.base.detail', ['cat.service.breadcrumbs', 'cat.controller.base.tabs'])
+    .controller('CatBaseDetailController', CatBaseDetailController);
+'use strict';
+
+
+/**
+ * @ngdoc controller
+ * @name cat.controller.base.list:CatBaseListController
+ * @module cat.controller.base.list
+ *
+ * @description
+ * The CatBaseListController takes care of providing several common properties to the scope
+ * of every list page. It also instantiates the controller given via the config.controller parameter and shares
+ * the same scope with it. In addition it has a common template 'cat-base-list.tpl.html' which shows a title,
+ * new button and provides the cat-paginated directive.
+ *
+ * Common properties include:
+ * * listData - the listData to be used by cat-paginated
+ * * title - the title of the view
+ * * searchProps - the list of search properties passed on to the cat-paginated directive
+ * * config - the config object used to instantiate this view
+ *
+ * @param {object} $scope scope
+ * @param {object} $state state service
+ * @param {object} $controller controller
+ * @param {object} $log log
+ * @param {object} catBreadcrumbsService catBreadcrumbsService
+ * @param {object} catListDataLoadingService catListDataLoadingService
+ * @param {object} config holds data like the listData object, the template url, base url, the model constructor, etc.
+ */
+function CatBaseListController($scope, $state, $controller, $log, catBreadcrumbsService, catListDataLoadingService, config) {
+    if (!_.isUndefined(config.listData)) {
+        this.titleKey = 'cc.catalysts.cat-breadcrumbs.entry.' + config.listData.endpoint.getEndpointName();
+
+        catBreadcrumbsService.set([
+            {
+                title: config.title,
+                key: this.titleKey
+            }
+        ]);
+
+        $scope.listData = config.listData;
+    } else {
+        $log.warn('No listData available!');
+    }
+
+    this.title = config.title;
+    this.searchProps = config.searchProps;
+    this.config = config;
+
+    this.getUrlForId = function (id) {
+        $log.warn('use ui-sref directly - this method will be removed in the near future');
+        return $state.href('^.detail', {id: id});
+    };
+
+    this.getUrlForNewPage = function () {
+        return this.getUrlForId('new');
+    };
+
+    this.remove = function(id) {
+        config.listData.endpoint.remove(id)
+            .then(function() {
+                catListDataLoadingService.load(config.listData.endpoint, config.listData.searchRequest).then(
+                    function (data) {
+                        _.assign($scope.listData, data);
+                    }
+                );
+            });
+    };
+
+    try {
+        // extend with custom controller
+        $controller(config.controller, {$scope: $scope, listData: config.listData, config: config});
+    } catch (unused) {
+        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
+    }
+}
+
+
+angular.module('cat.controller.base.list', ['cat.service.breadcrumbs'])
+    .controller('CatBaseListController',
+    ['$scope', '$state', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
+
+'use strict';
+
+/**
+ * @ngdoc controller
+ * @name cat.controller.base.tabs:CatBaseTabsController
+ * @module cat.controller.base.tabs
+ *
+ * @description
+ * The base code for handling sub entites (as tabs).
+ * Includes the instantiation of one controller per tab/list and lazy loading of the approrpiate data
+ *
+ * @param {Object} $scope The angular scope
+ * @param {Object} $controller The angular $controller service
+ * @param {Object} $stateParams The ui-router $stateParams service
+ * @param {Object} $location The angular $location service
+ * @param {Object} catElementVisibilityService The visibility service to check wheter or not a tab should be rendered
+ * @param {Object} config The config as handled by state resolve
+ */
+function CatBaseTabsController($scope, $controller, $stateParams, $location, catElementVisibilityService, config, urlResolverService) {
+    var endpoint = config.endpoint;
+
+    $scope.tabs = _.filter(config.tabs, function (tab) {
+        return catElementVisibilityService.isVisible('cat.base.tab', tab);
+    });
+    $scope.tabNames = _.map($scope.tabs, 'name');
+    $scope.activeTab = {};
+
+    $scope.activateTab = function (tab) {
+        $scope.$broadcast('tab-' + tab + '-active');
+        _.forEach($scope.tabs, function (currentTab) {
+            $scope.activeTab[currentTab.name] = false;
+        });
+        $scope.activeTab[tab] = true;
+    };
+
+    $scope.selectTab = function (tabName) {
+        if (_.isUndefined($location.search().tab) && tabName === $scope.tabNames[0]) {
+            // don't add 'default' tab to url
+            return;
+        }
+        $location.search('tab', tabName);
+    };
+
+    var isTabActive = function (tab) {
+        if (tab.name === $scope.tabNames[0] && _.isUndefined($stateParams.tab)) {
+            // first tab is active if no parameter is given
+            return true;
+        }
+        return $stateParams.tab === tab.name;
+    };
+
+    $scope.$watchCollection(function () {
+        return $location.search();
+    }, function (newValue) {
+        if (_.isString(newValue.tab)) {
+            $scope.activateTab(newValue.tab);
+        } else if (_.isUndefined(newValue.tab)) {
+            // activate first tab if undefined
+            $scope.activateTab($scope.tabNames[0]);
+        }
+    });
+
+    $scope.getTabName = function (tab) {
+        return window.cat.util.pluralize(window.cat.util.capitalize(tab));
+    };
+
+    _.forEach($scope.tabs, function (tab) {
+        $scope.activeTab[tab.name] = isTabActive(tab);
+    });
+
+    $scope.getTabTemplate = function (tab) {
+        return urlResolverService.getTabTemplate(tab, config);
+    };
+
+    $scope.getTabKey = function (tabName) {
+        var key = 'cc.catalysts.general.tab.' + endpoint.getEndpointName();
+
+        var parentEndpoint = endpoint.parentEndpoint;
+
+        while (parentEndpoint) {
+            key += '.';
+            key += parentEndpoint.getEndpointName();
+        }
+
+        return key + '.' + tabName;
+    };
+
+    var _getDefaultTabControllerName = function (tab) {
+        var name = window.cat.util.capitalize(endpoint.getEndpointName());
+        var parentEndpoint = endpoint.parentEndpoint;
+
+        while (parentEndpoint) {
+            name = window.cat.util.capitalize(parentEndpoint.getEndpointName()) + name;
+            parentEndpoint = parentEndpoint.parentEndpoint;
+        }
+
+        return name + window.cat.util.capitalize(tab.name) + 'Controller';
+    };
+
+    var _getTabControllerName = function (tab) {
+        if (!!tab.controller) {
+            return tab.controller;
+        }
+
+        return _getDefaultTabControllerName(tab);
+    };
+
+    var tabIndex = 0;
+
+    $scope.tabController = ['$scope', 'catListDataLoadingService', function ($tabScope, catListDataLoadingService) {
+        var activeTab = $scope.tabs[tabIndex++];
+        var tabControllerName = _getTabControllerName(activeTab);
+
+        $tabScope.getSearchRequest = function () {
+            return new window.cat.SearchRequest();
+        };
+
+        $tabScope.getEndpoint = function () {
+            return config.detail[activeTab.name];
+        };
+
+        $tabScope.loadListData = function () {
+            catListDataLoadingService.load($tabScope.getEndpoint(), $tabScope.getSearchRequest()).then(function (data) {
+                $tabScope.listData = data;
+            });
+        };
+
+        $tabScope.$on('tab-' + activeTab.name + '-active', function () {
+            if (_.isUndefined($scope.listData)) {
+                $tabScope.loadListData();
+            }
+        });
+
+        $controller(tabControllerName, {
+            $scope: $tabScope,
+            detail: config.detail,
+            parents: config.parents,
+            config: config
+        });
+
+        if ($scope.activeTab[activeTab.name] === true) {
+            $scope.activateTab(activeTab.name);
+        }
+    }];
+}
+CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config", "urlResolverService"];
+
+angular
+    .module('cat.controller.base.tabs', [
+        'cat.service.elementVisibility',
+        'cat.url.resolver.service'
+    ]).controller('CatBaseTabsController', CatBaseTabsController);
+'use strict';
+
+/**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
  */
@@ -287,6 +731,8 @@ angular.module('cat.directives.autofocus', [])
             }
         };
     }]);
+
+
 
 'use strict';
 
@@ -825,8 +1271,11 @@ angular.module('cat.directives.paginated',
 
 'use strict';
 
-function CatSelectLink(scope, element) {
+function CatSelectLink(scope, element, attrs, ngModel) {
     element.addClass('form-control');
+    // clear formatters, otherwise $viewModel will be converted to a string
+    // see https://github.com/angular/angular.js/commit/1eda18365a348c9597aafba9d195d345e4f13d1e
+    ngModel.$formatters = [];
 }
 
 function CatSelectController($scope, $log, catApiService, catSelectConfigService) {
@@ -968,6 +1417,7 @@ function CatSelectDirective() {
         restrict: 'EA',
         replace: true,
         priority: 1,
+        require: 'ngModel',
         scope: {
             options: '=?',
             id: '@',
@@ -1115,448 +1565,42 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
 'use strict';
 
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
+
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu',
+    'cc.catalysts.general.edit': 'Bearbeiten',
+    'cc.catalysts.general.delete': 'Löschen',
+    'cc.catalysts.general.save': 'Speichern',
+    'cc.catalysts.general.cancel': 'Abbrechen'
+});
+
 /**
- * @ngdoc controller
- * @name cat.controller.base.detail:CatBaseDetailController
- * @module cat.controller.base.detail
- *
- * @description
- * The CatBaseDetailController takes care of providing several common properties and functions to the scope
- * of every detail page. It also instantiates the controller given via the config.controller parameter and shares
- * the same scope with it.
- *
- * Common properties include:
- * * detail - the actual object to view
- * * editDetail - a copy of the detail object used for editing
- * * breadcrumbs - the breadcrumbs array
- * * uiStack - the ui stack array if parents exist
- * * editTemplate - the url of the edit template
- * * mainViewTemplate - the url of the main view template
- * * additionalViewTemplate - the url of the additional view template if it exists
- *
- * Common functions include:
- * * save - the save function to update / create an object
- * * edit - a function to switch from view to edit mode
- * * cancelEdit - a function to switch from edit to view mode (discarding all changes)
- * * add - a function to switch into edit mode of a new object
- * * remove - a function to delete the current object
- * * title - a function to resolve a 'title' of the current object
- *
- * @param {object} $scope DOCTODO
- * @param {object} $state DOCTODO
- * @param {object} $stateParams DOCTODO
- * @param {object} $location DOCTODO
- * @param {object} $window DOCTODO
- * @param {object} $globalMessages DOCTODO
- * @param {object} $controller DOCTODO
- * @param {object} $log DOCTODO
- * @param {object} catValidationService DOCTODO
- * @param {object} catBreadcrumbsService DOCTODO
- * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
+ * Created by tscheinecker on 23.10.2014.
  */
-function CatBaseDetailController($scope, $state, $stateParams, $location, $window, $globalMessages, $controller, $log, catValidationService, catBreadcrumbsService, config) {
-    $scope.detail = config.detail;
-    $scope.editDetail = undefined;
-
-    $scope.config = config;
-    var endpoint = config.endpoint;
-    var templateUrls = config.templateUrls;
-    var Model = config.Model;
-
-    $scope.uiStack = catBreadcrumbsService.generateFromConfig(config);
-
-    if ($stateParams.id === 'new') {
-        catBreadcrumbsService.push({
-            title: 'New',
-            key: 'cc.catalysts.general.new'
-        });
-    } else {
-        catBreadcrumbsService.push({});
-    }
-
-    $scope.editTemplate = templateUrls.edit;
-
-    if (_.isObject(templateUrls.view)) {
-        $scope.mainViewTemplate = templateUrls.view.main;
-        $scope.additionalViewTemplate = templateUrls.view.additional;
-    } else {
-        $scope.mainViewTemplate = templateUrls.view;
-    }
-
-    /**
-     * @returns {String|Number} A title of the current object or the 'id' as fallback
-     */
-    $scope.title = function () {
-        var data = $scope.detail;
-        if (_.isUndefined(data)) {
-            return '';
-        }
-        return !!data.breadcrumbTitle ? data.breadcrumbTitle() : (!!data.name ? data.name : data.id);
-    };
-
-    var update = function () {
-        catBreadcrumbsService.replaceLast({
-            title: $scope.title()
-        });
-    };
-
-    /**
-     * reloads the current object from the server
-     */
-    $scope.reloadDetails = function () {
-        endpoint.get($stateParams.id).then(function (data) {
-            $scope.detail = data;
-            update();
-        });
-    };
-
-    $scope.exists = !!$stateParams.id && $stateParams.id !== 'new';
-
-    /**
-     * Creates a new copy of the given model and sets its parent if applicable.
-     * Triggers a switch into the edit mode
-     */
-    $scope.add = function () {
-        $scope.editDetail = new Model();
-        if (_.isFunction($scope.editDetail.setParent)) {
-            $scope.editDetail.setParent(config.parents[0]);
-        }
-    };
-
-    /**
-     * Creates a copy of the current object and triggers a switch into edit mode
-     */
-    $scope.edit = function () {
-        $scope.editDetail = angular.copy($scope.detail);
-        if (_.isFunction($scope.editDetail.setParent)) {
-            $scope.editDetail.setParent(config.parents[0]);
-        }
-    };
-
-    /**
-     * Either cancels the current edit of an object by resetting it or triggers a history back event if the 'new' mode
-     * is active
-     */
-    $scope.cancelEdit = function () {
-        catValidationService.clearValidationErrors();
-        $scope.$broadcast('formReset');
-        if ($scope.exists) {
-            $scope.editDetail = undefined;
-            $globalMessages.clearMessages();
-        } else {
-            $window.history.back();
-        }
-    };
-
-    /**
-     * Calls the remove function of the current endpoint and redirects to the ^.list upon success
-     */
-    $scope.remove = function () {
-        endpoint.remove($scope.detail.id).then(function () {
-            if (_.isEmpty($scope.uiStack)) {
-                $state.go('^.list');
-            } else {
-                var url = $state.href('^.^');
-                $location.url(url.substring(1, url.length));
-                $location.search('tab', endpoint.getEndpointName());
-            }
-        });
-    };
-
-    /**
-     * Calls the save function of the current endpoint.
-     * Upon success the view mode of the details of the currently created / updated object will be shown.
-     * Upon an error the reported errors (global & field errors) will be shown to the user and the edit mode
-     * will remain active.
-     *
-     * * @param {object} stayInEdit If true the view stays in detail edit state after save instead of switching to
-     *                              detail view state.
-     */
-    $scope.save = function (stayInEdit) {
-        // When passing data to an asynchronous method, it makes sense to clone it.
-        endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
-            $globalMessages.clearMessages();
-            catValidationService.clearValidationErrors();
-            if (stayInEdit){
-                $scope.editDetail = data;
-                // Refresh-Breadcrumb:
-                $scope.reloadDetails();
-            } else {
-                if (!$scope.exists) {
-                    $scope.$broadcast('formReset');
-                    $state.go('.', {id: data.id});
-                } else {
-                    $scope.editDetail = undefined;
-                    $scope.detail = data;
-                    update();
-                }
-            }
-        });
-    };
-
-    // TABS
-    $scope.baseTabsController = ['$scope', function ($tabsScope) {
-        $controller('CatBaseTabsController', {
-            $scope: $tabsScope,
-            config: config
-        });
-    }];
-
-    try {
-        // extend with custom controller
-        $controller(config.controller, {
-            $scope: $scope,
-            detail: config.detail,
-            parents: config.parents,
-            config: config
-        });
-    } catch (unused) {
-        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
-    }
-
-    if ($scope.exists) {
-        update();
-    } else {
-        $scope.edit();
-    }
-}
-CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catValidationService", "catBreadcrumbsService", "config"];
-
-angular.module('cat.controller.base.detail', ['cat.service.breadcrumbs', 'cat.controller.base.tabs'])
-    .controller('CatBaseDetailController', CatBaseDetailController);
 'use strict';
 
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
 
-/**
- * @ngdoc controller
- * @name cat.controller.base.list:CatBaseListController
- * @module cat.controller.base.list
- *
- * @description
- * The CatBaseListController takes care of providing several common properties to the scope
- * of every list page. It also instantiates the controller given via the config.controller parameter and shares
- * the same scope with it. In addition it has a common template 'cat-base-list.tpl.html' which shows a title,
- * new button and provides the cat-paginated directive.
- *
- * Common properties include:
- * * listData - the listData to be used by cat-paginated
- * * title - the title of the view
- * * searchProps - the list of search properties passed on to the cat-paginated directive
- * * config - the config object used to instantiate this view
- *
- * @param {object} $scope scope
- * @param {object} $state state service
- * @param {object} $controller controller
- * @param {object} $log log
- * @param {object} catBreadcrumbsService catBreadcrumbsService
- * @param {object} catListDataLoadingService catListDataLoadingService
- * @param {object} config holds data like the listData object, the template url, base url, the model constructor, etc.
- */
-function CatBaseListController($scope, $state, $controller, $log, catBreadcrumbsService, catListDataLoadingService, config) {
-    if (!_.isUndefined(config.listData)) {
-        this.titleKey = 'cc.catalysts.cat-breadcrumbs.entry.' + config.listData.endpoint.getEndpointName();
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New',
+    'cc.catalysts.general.edit': 'Edit',
+    'cc.catalysts.general.delete': 'Delete',
+    'cc.catalysts.general.save': 'Save',
+    'cc.catalysts.general.cancel': 'Cancel'
+});
 
-        catBreadcrumbsService.set([
-            {
-                title: config.title,
-                key: this.titleKey
-            }
-        ]);
-
-        $scope.listData = config.listData;
-    } else {
-        $log.warn('No listData available!');
-    }
-
-    this.title = config.title;
-    this.searchProps = config.searchProps;
-    this.config = config;
-
-    this.getUrlForId = function (id) {
-        $log.warn('use ui-sref directly - this method will be removed in the near future');
-        return $state.href('^.detail', {id: id});
-    };
-
-    this.getUrlForNewPage = function () {
-        return this.getUrlForId('new');
-    };
-
-    this.remove = function(id) {
-        config.listData.endpoint.remove(id)
-            .then(function() {
-                catListDataLoadingService.load(config.listData.endpoint, config.listData.searchRequest).then(
-                    function (data) {
-                        _.assign($scope.listData, data);
-                    }
-                );
-            });
-    };
-
-    try {
-        // extend with custom controller
-        $controller(config.controller, {$scope: $scope, listData: config.listData, config: config});
-    } catch (unused) {
-        $log.info('Couldn\'t instantiate controller with name ' + config.controller);
-    }
-}
-
-
-angular.module('cat.controller.base.list', ['cat.service.breadcrumbs'])
-    .controller('CatBaseListController',
-    ['$scope', '$state', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
-
-'use strict';
-
-/**
- * @ngdoc controller
- * @name cat.controller.base.tabs:CatBaseTabsController
- * @module cat.controller.base.tabs
- *
- * @description
- * The base code for handling sub entites (as tabs).
- * Includes the instantiation of one controller per tab/list and lazy loading of the approrpiate data
- *
- * @param {Object} $scope The angular scope
- * @param {Object} $controller The angular $controller service
- * @param {Object} $stateParams The ui-router $stateParams service
- * @param {Object} $location The angular $location service
- * @param {Object} catElementVisibilityService The visibility service to check wheter or not a tab should be rendered
- * @param {Object} config The config as handled by state resolve
- */
-function CatBaseTabsController($scope, $controller, $stateParams, $location, catElementVisibilityService, config) {
-    var endpoint = config.endpoint;
-
-    $scope.tabs = _.filter(config.tabs, function(tab) {
-        return catElementVisibilityService.isVisible('cat.base.tab', tab);
-    });
-    $scope.tabNames = _.map($scope.tabs, 'name');
-    $scope.activeTab = {};
-
-    $scope.activateTab = function (tab) {
-        $scope.$broadcast('tab-' + tab + '-active');
-        _.forEach($scope.tabs, function (currentTab) {
-            $scope.activeTab[currentTab.name] = false;
-        });
-        $scope.activeTab[tab] = true;
-    };
-
-    $scope.selectTab = function (tabName) {
-        if (_.isUndefined($location.search().tab) && tabName === $scope.tabNames[0]) {
-            // don't add 'default' tab to url
-            return;
-        }
-        $location.search('tab', tabName);
-    };
-
-    var isTabActive = function (tab) {
-        if (tab.name === $scope.tabNames[0] && _.isUndefined($stateParams.tab)) {
-            // first tab is active if no parameter is given
-            return true;
-        }
-        return $stateParams.tab === tab.name;
-    };
-
-    $scope.$watchCollection(function () {
-        return $location.search();
-    }, function (newValue) {
-        if (_.isString(newValue.tab)) {
-            $scope.activateTab(newValue.tab);
-        } else if (_.isUndefined(newValue.tab)) {
-            // activate first tab if undefined
-            $scope.activateTab($scope.tabNames[0]);
-        }
-    });
-
-    $scope.getTabName = function (tab) {
-        return window.cat.util.pluralize(window.cat.util.capitalize(tab));
-    };
-
-    _.forEach($scope.tabs, function (tab) {
-        $scope.activeTab[tab.name] = isTabActive(tab);
-    });
-
-    // TODO replace by url resolver service as soon as it is available
-    var parentUrl = endpoint.getEndpointName();
-    var parentTemplateNamePrefix = endpoint.getEndpointName();
-
-    var currentEndpoint = endpoint;
-
-    while (!_.isUndefined(currentEndpoint.parentEndpoint)) {
-        currentEndpoint = endpoint.parentEndpoint;
-        var parentEndpointName = currentEndpoint.getEndpointName();
-
-        parentUrl = parentEndpointName + '/' + parentUrl;
-
-        parentTemplateNamePrefix = parentEndpointName + '-' + parentTemplateNamePrefix;
-    }
-
-    $scope.getTabTemplate = function (tab) {
-        return parentUrl + '/' + tab + '/' + parentTemplateNamePrefix + '-' + tab + '-list.tpl.html';
-    };
-
-    var _getDefaultTabControllerName = function (tab) {
-        var name = window.cat.util.capitalize(endpoint.getEndpointName());
-        var parentEndpoint = endpoint.parentEndpoint;
-
-        while (parentEndpoint) {
-            name = window.cat.util.capitalize(parentEndpoint.getEndpointName()) + name;
-            parentEndpoint = parentEndpoint.parentEndpoint;
-        }
-
-        return name + window.cat.util.capitalize(tab.name) + 'Controller';
-    };
-
-    var _getTabControllerName = function (tab) {
-        if (!!tab.controller) {
-            return tab.controller;
-        }
-
-        return _getDefaultTabControllerName(tab);
-    };
-
-    var tabIndex = 0;
-
-    $scope.tabController = ['$scope', 'catListDataLoadingService', function ($tabScope, catListDataLoadingService) {
-        var activeTab = $scope.tabs[tabIndex++];
-        var tabControllerName = _getTabControllerName(activeTab);
-
-        $tabScope.getSearchRequest = function () {
-            return new window.cat.SearchRequest();
-        };
-
-        $tabScope.getEndpoint = function () {
-            return config.detail[activeTab.name];
-        };
-
-        $tabScope.loadListData = function () {
-            catListDataLoadingService.load($tabScope.getEndpoint(), $tabScope.getSearchRequest()).then(function (data) {
-                $tabScope.listData = data;
-            });
-        };
-
-        $tabScope.$on('tab-' + activeTab.name + '-active', function () {
-            if (_.isUndefined($scope.listData)) {
-                $tabScope.loadListData();
-            }
-        });
-
-        $controller(tabControllerName, {
-            $scope: $tabScope,
-            detail: config.detail,
-            parents: config.parents,
-            config: config
-        });
-
-        if ($scope.activeTab[activeTab.name] === true) {
-            $scope.activateTab(activeTab.name);
-        }
-    }];
-}
-CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config"];
-
-angular.module('cat.controller.base.tabs', ['cat.service.elementVisibility']).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
 
@@ -1588,34 +1632,6 @@ angular.module('cat.filters.replaceText', [])
             return String(text).replace(new RegExp(pattern, options), replacement);
         }
     };
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New'
 });
 
 'use strict';
@@ -1977,7 +1993,7 @@ function CatApiServiceProvider() {
 
 /**
  * @ngdoc service
- * @name cat.service.api:$api
+ * @name cat.service.api:catApiService
  *
  * @description
  * The CatApiServiceProvider exposes a single configuration method 'endpoint' which can be used to create or retrieve
@@ -2316,7 +2332,7 @@ function CatI18nMessageSourceService($q, catI18nLocaleService, CAT_I18N_DEFAULT_
 
         var messages = window.cat.i18n[localeId];
         if (_.isUndefined(messages)) {
-            messages = _getMessages(catI18nLocaleService.getLanguageOfLocale(localeId));
+            messages = _getMessages(catI18nLocaleService.getDefaultLocale());
         }
         if (localeId !== CAT_I18N_DEFAULT_LOCALE && _.isUndefined(messages)) {
             messages = _getMessages(CAT_I18N_DEFAULT_LOCALE);
@@ -2515,7 +2531,11 @@ angular.module('cat.service.i18n', ['cat.service.i18n.message'])
  * @ngdoc service
  * @name cat.service.listDataLoading:catListDataLoadingService
  */
-angular.module('cat.service.listDataLoading', ['cat.service.api'])
+angular
+    .module('cat.service.listDataLoading', [
+        'cat.service.api',
+        'ui.router'
+    ])
     .factory('catListDataLoadingService', ['$state', '$location', '$q', 'catApiService', 'catSearchService', function CatListDataLoadingService($state, $location, $q, catApiService, catSearchService) {
         var load = function (endpoint, searchRequest) {
             var deferred = $q.defer();
@@ -2991,6 +3011,32 @@ function CatSelectConfigServiceProvider() {
 }
 
 angular.module('cat.service.selectConfig', []).provider('catSelectConfigService', CatSelectConfigServiceProvider);
+/**
+ * Created by Mustafa on 05.08.2015.
+ */
+angular.module('cat.url.resolver.service', []).service('urlResolverService', function(){
+
+    'use strict';
+
+    this.getTabTemplate = function(tab, config){
+
+        var parentUrl = config.endpoint.getEndpointName();
+        var parentTemplateNamePrefix = config.endpoint.getEndpointName();
+        var currentEndpoint = config.endpoint;
+
+        while (!_.isUndefined(currentEndpoint.parentEndpoint)) {
+            currentEndpoint = config.endpoint.parentEndpoint;
+            var parentEndpointName = currentEndpoint.getEndpointName();
+
+            parentUrl = parentEndpointName + '/' + parentUrl;
+
+            parentTemplateNamePrefix = parentEndpointName + '-' + parentTemplateNamePrefix;
+        }
+        return parentUrl + '/' + tab + '/' + parentTemplateNamePrefix + '-' + tab + '-list.tpl.html';
+    };
+});
+
+
 'use strict';
 
 /**
@@ -3017,12 +3063,12 @@ angular.module('cat.service.validation', ['cat.service.message'])
  * @description
  * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client
  */
-    .service('catValidationService', ["$rootScope", "$globalMessages", "catValidations", function CatErrorHttpInterceptor($rootScope, $globalMessages, catValidations) {
+    .service('catValidationService', ["$globalMessages", "catValidations", function CatErrorHttpInterceptor($globalMessages, catValidations) {
         this.updateFromRejection = function (rejection) {
             delete catValidations.global;
 
             if (!!rejection.data.globalErrors) {
-                catValidations.global = rejection.data.error;
+                catValidations.global = rejection.data.globalErrors;
                 $globalMessages.addMessages('error', rejection.data.globalErrors);
             }
 
@@ -3034,7 +3080,6 @@ angular.module('cat.service.validation', ['cat.service.message'])
                     fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
                     fieldErrors[fieldError.field].push(fieldError.message);
                 });
-                $rootScope.$on('fieldErrors', fieldErrors);
             }
 
         };
@@ -3249,7 +3294,11 @@ function CatViewConfigService($q, catApiService, catListDataLoadingService) {
 }
 CatViewConfigService.$inject = ["$q", "catApiService", "catListDataLoadingService"];
 
-angular.module('cat.service.view.config', ['cat.service.api'])
+angular
+    .module('cat.service.view.config', [
+        'cat.service.api',
+        'cat.service.listDataLoading'
+    ])
     .service('catViewConfigService', CatViewConfigService);
 
 'use strict';
@@ -3318,7 +3367,12 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
 }
 CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
 
-angular.module('cat.service.view', ['cat.service.api', 'cat.service.route', 'cat.service.view.config']).provider('catViewService', CatViewServiceProvider);
+angular.module('cat.service.view',
+    [
+        'cat.service.api',
+        'cat.service.route',
+        'cat.service.view.config'
+    ]).provider('catViewService', CatViewServiceProvider);
 'use strict';
 
 angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service.loading', 'cat.service.validation'])
@@ -3386,7 +3440,7 @@ angular.module('cat.service.loading', ['angularSpinner'])
         var startTime;
         var startTimer, stopTimer;
 
-            this.start = function () {
+        this.start = function () {
             if (!activeCount && !startTimer) {
                 if (!!stopTimer) {
                     $timeout.cancel(stopTimer);
@@ -3401,7 +3455,7 @@ angular.module('cat.service.loading', ['angularSpinner'])
             activeCount++;
         };
 
-            this.stop = function () {
+        this.stop = function () {
             activeCount--;
             if (!activeCount && !stopTimer) {
                 if (!!startTimer) {
@@ -3427,7 +3481,7 @@ angular.module('cat.service.loading', ['angularSpinner'])
         $rootScope.$on('$stateChangeError', function (event) {
             that.stop();
         });
-        }]);
+    }]);
 
 'use strict';
 
