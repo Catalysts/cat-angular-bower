@@ -674,6 +674,39 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+.filter('replaceText', function CatReplaceTetFilter() {
+    return function (text, pattern, options, replacement) {
+        if (pattern === undefined)
+            pattern = '\n';
+        if (options === undefined)
+            options = 'g';
+        if (replacement === undefined)
+            replacement = ', ';
+        if (!text) {
+            return text;
+        } else {
+            return String(text).replace(new RegExp(pattern, options), replacement);
+        }
+    };
+});
+
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -1527,37 +1560,40 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+/**
+ * Created by tscheinecker on 23.10.2014.
+ */
 'use strict';
 
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.de = window.cat.i18n.de || {};
 
-angular.module('cat.filters.replaceText', [])
+_.assign(window.cat.i18n.de, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu',
+    'cc.catalysts.general.edit': 'Bearbeiten',
+    'cc.catalysts.general.delete': 'Löschen',
+    'cc.catalysts.general.save': 'Speichern',
+    'cc.catalysts.general.cancel': 'Abbrechen'
+});
 
 /**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
+ * Created by tscheinecker on 23.10.2014.
  */
-.filter('replaceText', function CatReplaceTetFilter() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === undefined)
-            pattern = '\n';
-        if (options === undefined)
-            options = 'g';
-        if (replacement === undefined)
-            replacement = ', ';
-        if (!text) {
-            return text;
-        } else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
+'use strict';
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n.en = window.cat.i18n.en || {};
+
+_.assign(window.cat.i18n.en, {
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New',
+    'cc.catalysts.general.edit': 'Edit',
+    'cc.catalysts.general.delete': 'Delete',
+    'cc.catalysts.general.save': 'Save',
+    'cc.catalysts.general.cancel': 'Cancel'
 });
 
 'use strict';
@@ -2432,7 +2468,13 @@ angular.module('cat.service.i18n', ['cat.service.i18n.message'])
  * A function which accepts a message and parameters and returns the resolved message
  */
     .value('catI18nMessageParameterResolver', function (message, parameters) {
-        return _.template(message, parameters || {}, {interpolate: /{{([\s\S\d]+?)}}/g});
+        var result = _.template(message, parameters || {}, {interpolate: /{{([\s\S\d]+?)}}/g});
+
+        // lodash >=3
+        if(_.isFunction(result)) {
+            return result();
+        }
+        return result;  // lodash <3
     })
 
 
@@ -3685,42 +3727,6 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
         self.clearMessages();
     });
 }]);
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.de = window.cat.i18n.de || {};
-
-_.assign(window.cat.i18n.de, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu',
-    'cc.catalysts.general.edit': 'Bearbeiten',
-    'cc.catalysts.general.delete': 'Löschen',
-    'cc.catalysts.general.save': 'Speichern',
-    'cc.catalysts.general.cancel': 'Abbrechen'
-});
-
-/**
- * Created by tscheinecker on 23.10.2014.
- */
-'use strict';
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n.en = window.cat.i18n.en || {};
-
-_.assign(window.cat.i18n.en, {
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New',
-    'cc.catalysts.general.edit': 'Edit',
-    'cc.catalysts.general.delete': 'Delete',
-    'cc.catalysts.general.save': 'Save',
-    'cc.catalysts.general.cancel': 'Cancel'
-});
 
 /**
  * Created by tscheinecker on 26.08.2014.
