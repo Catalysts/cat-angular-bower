@@ -47,6 +47,11 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '                    <span class="glyphicon glyphicon-trash"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.delete">Delete</span>\n' +
     '                </button>\n' +
+    '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="copy()"\n' +
+    '                        cat-element-visible="cat.base.copy" cat-element-data="config">\n' +
+    '                    <span class="glyphicon glyphicon-duplicate"></span>\n' +
+    '                    <span cat-i18n="cc.catalysts.general.copy">Copy</span>\n' +
+    '                </button>\n' +
     '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
     '                        cat-element-visible="cat.base.edit" cat-element-data="config"\n' +
     '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span>\n' +
@@ -81,7 +86,6 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '            <span cat-i18n="cc.catalysts.general.save">Save</span>\n' +
     '        </button>\n' +
     '    </div>\n' +
-    '</div>\n' +
     '</div>\n' +
     '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
     '     ng-controller="baseTabsController"></div>');

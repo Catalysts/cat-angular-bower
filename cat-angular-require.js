@@ -363,6 +363,17 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
     };
 
     /**
+     * Calls the copy function of the current endpoint and redirects to the detail page of the copied object upon success
+     */
+    $scope.copy = function () {
+        endpoint.copy($scope.detail.id).then(function (data) {
+            //Note: here we go to the detail state of the copied object although we have all the data of the copied object here,
+            // but otherwise we would have to change the url and this leads to problems with browser back and so on
+            $state.go('.', {id: data.id});
+        });
+    };
+
+    /**
      * Calls the remove function of the current endpoint and redirects to the ^.list upon success
      */
     $scope.remove = function () {
@@ -391,7 +402,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
             $globalMessages.clearMessages();
             catValidationService.clearValidationErrors();
-            if (stayInEdit){
+            if (stayInEdit) {
                 $scope.editDetail = data;
                 // Refresh-Breadcrumb:
                 $scope.reloadDetails();
@@ -1353,7 +1364,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
             quietMillis: quietMillis,
             transport: transport,
             results: function (data, page) {
-                var more = (page * options.size || 100) < data.totalCount;
+                var more = (page * (options.size || 100)) < data.totalCount;
                 return {
                     results: _.filter(data.elements, filterFunc),
                     more: more
@@ -1574,6 +1585,7 @@ _.assign(window.cat.i18n.de, {
     'cc.catalysts.general.new': 'Neu',
     'cc.catalysts.general.edit': 'Bearbeiten',
     'cc.catalysts.general.delete': 'Löschen',
+    'cc.catalysts.general.copy': 'Kopieren',
     'cc.catalysts.general.save': 'Speichern',
     'cc.catalysts.general.cancel': 'Abbrechen'
 });
@@ -1592,6 +1604,7 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.general.new': 'New',
     'cc.catalysts.general.edit': 'Edit',
     'cc.catalysts.general.delete': 'Delete',
+    'cc.catalysts.general.copy': 'Copy',
     'cc.catalysts.general.save': 'Save',
     'cc.catalysts.general.cancel': 'Cancel'
 });
@@ -1762,6 +1775,18 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
      */
     this.get = function (id) {
         return $http.get(_endpointUrl + '/' + id).then(function (response) {
+            return _mapResponse(response.data);
+        });
+    };
+
+    /**
+     * This method makes a GET request to the url available via #getEndpointUrl with the addition of '/copy' and the provided id at the end.
+     * @param id the id which will be appended as '/copy/:id' to the url
+     * @return {object} a promise wrapping a new instance of the configured model initialized with the data retrieved
+     * from the backend
+     */
+    this.copy = function (id) {
+        return $http.get(_endpointUrl + '/copy/' + id).then(function (response) {
             return _mapResponse(response.data);
         });
     };
