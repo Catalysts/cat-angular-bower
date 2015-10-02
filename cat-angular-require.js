@@ -363,6 +363,17 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
     };
 
     /**
+     * Calls the copy function of the current endpoint and redirects to the detail page of the copied object upon success
+     */
+    $scope.copy = function () {
+        endpoint.copy($scope.detail.id).then(function (data) {
+            //Note: here we go to the detail state of the copied object although we have all the data of the copied object here,
+            // but otherwise we would have to change the url and this leads to problems with browser back and so on
+            $state.go('.', {id: data.id});
+        });
+    };
+
+    /**
      * Calls the remove function of the current endpoint and redirects to the ^.list upon success
      */
     $scope.remove = function () {
@@ -391,7 +402,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         endpoint.save(angular.copy($scope.editDetail)).then(function (data) {
             $globalMessages.clearMessages();
             catValidationService.clearValidationErrors();
-            if (stayInEdit){
+            if (stayInEdit) {
                 $scope.editDetail = data;
                 // Refresh-Breadcrumb:
                 $scope.reloadDetails();
@@ -495,9 +506,9 @@ function CatBaseListController($scope, $state, $controller, $log, catBreadcrumbs
         return this.getUrlForId('new');
     };
 
-    this.remove = function(id) {
+    this.remove = function (id) {
         config.listData.endpoint.remove(id)
-            .then(function() {
+            .then(function () {
                 catListDataLoadingService.load(config.listData.endpoint, config.listData.searchRequest).then(
                     function (data) {
                         _.assign($scope.listData, data);
@@ -517,7 +528,7 @@ function CatBaseListController($scope, $state, $controller, $log, catBreadcrumbs
 
 angular.module('cat.controller.base.list', ['cat.service.breadcrumbs'])
     .controller('CatBaseListController',
-    ['$scope', '$state', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
+        ['$scope', '$state', '$controller', '$log', 'catBreadcrumbsService', 'catListDataLoadingService', 'config', CatBaseListController]);
 
 'use strict';
 
@@ -674,39 +685,6 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-.filter('replaceText', function CatReplaceTetFilter() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === undefined)
-            pattern = '\n';
-        if (options === undefined)
-            options = 'g';
-        if (replacement === undefined)
-            replacement = ', ';
-        if (!text) {
-            return text;
-        } else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
-});
-
-'use strict';
-
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -728,6 +706,38 @@ angular.module('cat.directives.autofocus', [])
     }]);
 
 
+
+'use strict';
+
+angular.module('cat.directives.breadcrumbs', ['cat.service.breadcrumbs'])
+
+/**
+ * @description
+ * Configuration for cat-breadcrumbs.
+ */
+    .constant('catBreadcrumbsConfig', {
+        homeState: 'dashboard'
+    })
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.breadcrumbs:catBreadcrumbs
+ */
+    .directive('catBreadcrumbs', ["catBreadcrumbsConfig", "catBreadcrumbs", function CatBreadcrumbsDirective(catBreadcrumbsConfig, catBreadcrumbs) {
+        return {
+            restrict: 'A',
+            templateUrl: 'template/cat-breadcrumbs.tpl.html',
+            link: function CatAutofocusLink(scope, element) {
+                if (catBreadcrumbsConfig.homeState) {
+                    scope.homeState = catBreadcrumbsConfig.homeState;
+                }
+                scope.breadcrumbs = catBreadcrumbs;
+                scope.showHome = function () {
+                    return !!catBreadcrumbsConfig.homeState;
+                };
+            }
+        };
+    }]);
 
 'use strict';
 
@@ -900,16 +910,16 @@ angular.module('cat.directives.fieldErrors', ['cat.service.validation'])
                 var that = this;
 
                 if (angular.version.major === 1 && angular.version.minor === 2) {
-                    $scope.$watch('name', function(name) {
+                    $scope.$watch('name', function (name) {
                         that.name = name;
                     });
                 }
 
-                this.hasErrors = function() {
+                this.hasErrors = function () {
                     return catValidationService.hasFieldErrors(that.name);
                 };
 
-                this.getErrors = function() {
+                this.getErrors = function () {
                     return catValidationService.getFieldErrors(that.name);
                 };
             }],
@@ -964,7 +974,87 @@ angular.module('cat.directives.i18n', ['cat.service.i18n'])
 
 'use strict';
 
-angular.module('cat.directives.inputs', [])
+angular.module('cat.directives.icon', [])
+
+/**
+ * @description
+ * Configuration for cat-icon.
+ */
+    .constant('catIconConfig', {
+        icons: {
+            config: {
+                xsClass: undefined
+            },
+            create: 'glyphicon glyphicon-plus',
+            edit: 'glyphicon glyphicon-edit',
+            remove: 'glyphicon glyphicon-remove',
+            save: 'glyphicon glyphicon-floppy-disk'
+        }
+    })
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.icon:catIcon
+ *
+ * @param icon name of the icon
+ * @param title title of the icon
+ * @param size size of the icon [undefined | '': normal, 'xs': small]
+ */
+    .directive('catIcon', function CatIcon() {
+        return {
+            restrict: 'A',
+            replace: true,
+            template: '<span class="{{iconClass}}" title="{{title}}"></span>',
+            scope: {
+                icon: '@catIcon',
+                title: '@',
+                size: '@'
+            },
+            controller: ["$scope", "catIconConfig", function ($scope, catIconConfig) {
+                var icons = catIconConfig.icons;
+                var iconsConfig = icons.config;
+
+                var iconClasses = [];
+
+                // add size class
+                if (!!$scope.size && $scope.size === 'xs' && !!iconsConfig.xsClass) {
+                    iconClasses.push(iconsConfig.xsClass);
+                }
+
+                // add icon class
+                iconClasses.push(icons[$scope.icon]);
+
+                $scope.iconClass = iconClasses.join(' ');
+            }]
+        };
+    });
+
+'use strict';
+
+angular.module('cat.directives.inputGroup', [])
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.inputs:catInputGroup
+ */
+    .directive('catInputGroup', function CatInputGroupDirective() {
+        return {
+            restrict: 'A',
+            transclude: true,
+            scope: {
+                label: '@',
+                name: '@',
+                labelI18n: '@'
+            },
+            link: function CatInputGroupLink(scope, element) {
+                element.addClass('form-group');
+            },
+            templateUrl: 'template/cat-input.tpl.html'
+        };
+    });
+'use strict';
+
+angular.module('cat.directives.input', ['cat.directives.fieldErrors'])
 
 /**
  * @ngdoc directive
@@ -985,25 +1075,6 @@ angular.module('cat.directives.inputs', [])
                     });
                 }
             }
-        };
-    })
-
-/**
- * @ngdoc directive
- * @name cat.directives.inputs:catInputGroup
- */
-    .directive('catInputGroup', function CatInputGroupDirective() {
-        return {
-            restrict: 'A',
-            transclude: true,
-            scope: {
-                label: '@',
-                name: '@'
-            },
-            link: function CatInputGroupLink(scope, element) {
-                element.addClass('form-group');
-            },
-            templateUrl: 'template/cat-input.tpl.html'
         };
     });
 'use strict';
@@ -1054,13 +1125,13 @@ angular.module('cat.directives.loadMore', [])
  * @name cat.directives.menu:catLoadMore
  */
 angular.module('cat.directives.menu', ['cat.service.menu', 'cat.service.elementVisibility'])
-    .directive('catMainMenu', ['$mainMenu', 'catElementVisibilityService',
-        function CatMainMenuDirective($mainMenu, catElementVisibilityService) {
+    .directive('catMainMenu', ['$mainMenu', 'catElementVisibilityService', '$location',
+        function CatMainMenuDirective($mainMenu, catElementVisibilityService, $location) {
             return {
                 restrict: 'E',
                 scope: {},
                 link: function CatMainMenuLink(scope) {
-                    scope.getMenus = function() {
+                    scope.getMenus = function () {
                         return $mainMenu.getMenus();
                     };
 
@@ -1080,6 +1151,10 @@ angular.module('cat.directives.menu', ['cat.service.menu', 'cat.service.elementV
                         }
                         return visible;
                     };
+
+                    scope.isActive = function (path) {
+                        return $location.path().substr(0, path.length) === path;
+                    };
                 },
                 templateUrl: 'template/cat-main-menu.tpl.html'
             };
@@ -1098,171 +1173,171 @@ angular.module('cat.directives.paginated',
         'cat.service.i18n',
         'cat.service.search'
     ]).directive('catPaginated', ["$log", "catI18nService", function CatPaginatedDirective($log, catI18nService) {
-        var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
+    var SEARCH_PROP_KEY = 'cc.catalysts.cat-paginated.search.prop';
 
-        return {
-            replace: true,
-            restrict: 'E',
-            transclude: true,
-            scope: {
-                listData: '=?',
-                syncLocation: '=?'
-            },
-            templateUrl: 'template/cat-paginated.tpl.html',
-            link: function CatPaginatedLink(scope, element, attrs) {
-                if (!!attrs.searchProps) {
-                    scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
-                        return !!prop;
-                    });
+    return {
+        replace: true,
+        restrict: 'E',
+        transclude: true,
+        scope: {
+            listData: '=?',
+            syncLocation: '=?'
+        },
+        templateUrl: 'template/cat-paginated.tpl.html',
+        link: function CatPaginatedLink(scope, element, attrs) {
+            if (!!attrs.searchProps) {
+                scope.searchProps = _.filter(attrs.searchProps.split(','), function (prop) {
+                    return !!prop;
+                });
 
-                    scope.searchPropertyPlaceholders = {};
+                scope.searchPropertyPlaceholders = {};
 
-                    _.forEach(scope.searchProps, function (searchProp) {
-                        scope.searchPropertyPlaceholders[searchProp] = 'Search by ' + searchProp;
-                        catI18nService.translate(SEARCH_PROP_KEY, {prop: searchProp})
-                            .then(function (message) {
-                                scope.searchPropertyPlaceholders[searchProp] = message;
-                            });
-                    });
-                }
-            },
-            controllerAs: 'catPaginatedController',
-            controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", "catSearchService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService, catSearchService) {
-                var that = this;
-                var searchTimeout = null, DELAY_ON_SEARCH = 500;
-                var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
-                var PAGINATION_NEXT_KEY = 'cc.catalysts.cat-paginated.pagination.next';
-                var PAGINATION_FIRST_KEY = 'cc.catalysts.cat-paginated.pagination.first';
-                var PAGINATION_LAST_KEY = 'cc.catalysts.cat-paginated.pagination.last';
+                _.forEach(scope.searchProps, function (searchProp) {
+                    scope.searchPropertyPlaceholders[searchProp] = 'Search by ' + searchProp;
+                    catI18nService.translate(SEARCH_PROP_KEY, {prop: searchProp})
+                        .then(function (message) {
+                            scope.searchPropertyPlaceholders[searchProp] = message;
+                        });
+                });
+            }
+        },
+        controllerAs: 'catPaginatedController',
+        controller: ["$scope", "$location", "$timeout", "$rootScope", "catListDataLoadingService", "catI18nService", "catSearchService", function CatPaginatedController($scope, $location, $timeout, $rootScope, catListDataLoadingService, catI18nService, catSearchService) {
+            var that = this;
+            var searchTimeout = null, DELAY_ON_SEARCH = 500;
+            var PAGINATION_PREVIOUS_KEY = 'cc.catalysts.cat-paginated.pagination.previous';
+            var PAGINATION_NEXT_KEY = 'cc.catalysts.cat-paginated.pagination.next';
+            var PAGINATION_FIRST_KEY = 'cc.catalysts.cat-paginated.pagination.first';
+            var PAGINATION_LAST_KEY = 'cc.catalysts.cat-paginated.pagination.last';
 
+            if (_.isUndefined($scope.listData)) {
+                $scope.listData = $scope.$parent.listData;
                 if (_.isUndefined($scope.listData)) {
-                    $scope.listData = $scope.$parent.listData;
-                    if (_.isUndefined($scope.listData)) {
-                        throw new Error('listData was not defined and couldn\'t be found with default value');
-                    }
+                    throw new Error('listData was not defined and couldn\'t be found with default value');
                 }
+            }
 
-                if (_.isUndefined($scope.syncLocation)) {
-                    $scope.syncLocation = _.isUndefined($scope.$parent.detail);
-                }
+            if (_.isUndefined($scope.syncLocation)) {
+                $scope.syncLocation = _.isUndefined($scope.$parent.detail);
+            }
 
-                $scope.paginationText = {
-                    previous: 'Previous',
-                    next: 'Next',
-                    first: 'First',
-                    last: 'Last'
+            $scope.paginationText = {
+                previous: 'Previous',
+                next: 'Next',
+                first: 'First',
+                last: 'Last'
+            };
+
+            function handlePaginationTextResponse(prop) {
+                return function (message) {
+                    $scope.paginationText[prop] = message;
                 };
-
-                function handlePaginationTextResponse(prop) {
-                    return function (message) {
-                        $scope.paginationText[prop] = message;
-                    };
-                }
+            }
 
 
-                function _loadPaginationTranslations() {
-                    catI18nService.translate(PAGINATION_PREVIOUS_KEY).then(handlePaginationTextResponse('previous'));
-                    catI18nService.translate(PAGINATION_NEXT_KEY).then(handlePaginationTextResponse('next'));
-                    catI18nService.translate(PAGINATION_FIRST_KEY).then(handlePaginationTextResponse('first'));
-                    catI18nService.translate(PAGINATION_LAST_KEY).then(handlePaginationTextResponse('last'));
-                }
+            function _loadPaginationTranslations() {
+                catI18nService.translate(PAGINATION_PREVIOUS_KEY).then(handlePaginationTextResponse('previous'));
+                catI18nService.translate(PAGINATION_NEXT_KEY).then(handlePaginationTextResponse('next'));
+                catI18nService.translate(PAGINATION_FIRST_KEY).then(handlePaginationTextResponse('first'));
+                catI18nService.translate(PAGINATION_LAST_KEY).then(handlePaginationTextResponse('last'));
+            }
 
+            _loadPaginationTranslations();
+
+            $rootScope.$on('cat-i18n-refresh', function () {
                 _loadPaginationTranslations();
+            });
 
-                $rootScope.$on('cat-i18n-refresh', function () {
-                    _loadPaginationTranslations();
-                });
+            $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
 
-                $scope.listData.search = $scope.listData.search || $scope.listData.searchRequest.search() || {};
+            var searchRequest = $scope.listData.searchRequest;
 
-                var searchRequest = $scope.listData.searchRequest;
-
-                var reload = function (delay, force) {
-                    $timeout.cancel(searchTimeout);
-                    searchTimeout = $timeout(function () {
-                        if (searchRequest.isDirty() || !!force) {
-                            catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
-                                function (data) {
-                                    searchRequest.setPristine();
-                                    _.assign($scope.listData, data);
-                                }
-                            );
-                        }
-                    }, delay || 0);
-                };
-
-                $scope.$on('cat-paginated-refresh', function () {
-                    reload(0, true);
-                });
-
-                $scope.$watch('listData.sort', function (newVal) {
-                    if (!!newVal) {
-                        console.log('broadcasting sort changed: ' + angular.toJson(newVal));
-                        $scope.$parent.$broadcast('SortChanged', newVal);
+            var reload = function (delay, force) {
+                $timeout.cancel(searchTimeout);
+                searchTimeout = $timeout(function () {
+                    if (searchRequest.isDirty() || !!force) {
+                        catListDataLoadingService.load($scope.listData.endpoint, searchRequest).then(
+                            function (data) {
+                                searchRequest.setPristine();
+                                _.assign($scope.listData, data);
+                            }
+                        );
                     }
-                }, true);
+                }, delay || 0);
+            };
 
-                function updateLocation() {
-                    if ($scope.syncLocation !== false) {
-                        catSearchService.updateLocation(searchRequest);
-                        $location.replace();
-                    }
+            $scope.$on('cat-paginated-refresh', function () {
+                reload(0, true);
+            });
+
+            $scope.$watch('listData.sort', function (newVal) {
+                if (!!newVal) {
+                    console.log('broadcasting sort changed: ' + angular.toJson(newVal));
+                    $scope.$parent.$broadcast('SortChanged', newVal);
                 }
+            }, true);
 
-                $scope.$watch('listData.pagination', function (newVal, oldVal) {
-                    // TODO check wheter or not this is necessary with angular >= 1.3
-                    if (angular.equals(newVal, oldVal)) {
-                        return;
-                    }
-                    searchRequest.pagination($scope.listData.pagination);
-                    updateLocation();
-                    reload();
-                }, true);
+            function updateLocation() {
+                if ($scope.syncLocation !== false) {
+                    catSearchService.updateLocation(searchRequest);
+                    $location.replace();
+                }
+            }
 
-                var searchChanged = function (value, delay) {
-                    searchRequest.search(value);
-                    updateLocation();
-                    $scope.listData.pagination.page = 1;
-                    reload(delay);
-                };
+            $scope.$watch('listData.pagination', function (newVal, oldVal) {
+                // TODO check wheter or not this is necessary with angular >= 1.3
+                if (angular.equals(newVal, oldVal)) {
+                    return;
+                }
+                searchRequest.pagination($scope.listData.pagination);
+                updateLocation();
+                reload();
+            }, true);
 
-                var updateSearch = function (newVal, oldVal) {
-                    // TODO check wheter or not this is necessary with angular >= 1.3
-                    if (angular.equals(newVal, oldVal)) {
-                        return;
-                    }
-                    var search = searchRequest.search();
-                    _.assign(search, newVal);
-                    searchChanged(newVal, DELAY_ON_SEARCH);
-                };
+            var searchChanged = function (value, delay) {
+                searchRequest.search(value);
+                updateLocation();
+                $scope.listData.pagination.page = 1;
+                reload(delay);
+            };
 
-                $scope.$watch('listData.search', updateSearch, true);
+            var updateSearch = function (newVal, oldVal) {
+                // TODO check wheter or not this is necessary with angular >= 1.3
+                if (angular.equals(newVal, oldVal)) {
+                    return;
+                }
+                var search = searchRequest.search();
+                _.assign(search, newVal);
+                searchChanged(newVal, DELAY_ON_SEARCH);
+            };
 
-                this.sort = function (newVal, oldVal) {
-                    // TODO check wheter or not this is necessary with angular >= 1.3
-                    if (angular.equals(newVal, oldVal)) {
-                        return;
-                    }
-                    searchRequest.sort(newVal);
-                    updateLocation();
-                    $scope.listData.pagination.page = 1;
-                    reload();
-                };
+            $scope.$watch('listData.search', updateSearch, true);
 
-                this.getSearch = function () {
-                    return searchRequest.search();
-                };
+            this.sort = function (newVal, oldVal) {
+                // TODO check wheter or not this is necessary with angular >= 1.3
+                if (angular.equals(newVal, oldVal)) {
+                    return;
+                }
+                searchRequest.sort(newVal);
+                updateLocation();
+                $scope.listData.pagination.page = 1;
+                reload();
+            };
 
-                this.getSearchRequest = function () {
-                    return searchRequest;
-                };
+            this.getSearch = function () {
+                return searchRequest.search();
+            };
 
-                $scope.$on('SortChanged', function (event, value) {
-                    that.sort(value);
-                });
-            }]
-        };
-    }]);
+            this.getSearchRequest = function () {
+                return searchRequest;
+            };
+
+            $scope.$on('SortChanged', function (event, value) {
+                that.sort(value);
+            });
+        }]
+    };
+}]);
 
 'use strict';
 
@@ -1303,14 +1378,14 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
     var transport,
         quietMillis,
         searchRequestFunc = options.search || function (term, page) {
-            return {
-                'search.name': term,
-                page: page
-            };
-        },
+                return {
+                    'search.name': term,
+                    page: page
+                };
+            },
         filterFunc = options.filter || function (term) {
-            return true;
-        };
+                return true;
+            };
     if (_.isArray(options.endpoint)) {
         transport = function (queryParams) {
             return queryParams.success({
@@ -1353,7 +1428,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
             quietMillis: quietMillis,
             transport: transport,
             results: function (data, page) {
-                var more = (page * options.size || 100) < data.totalCount;
+                var more = (page * (options.size || 100)) < data.totalCount;
                 return {
                     results: _.filter(data.elements, filterFunc),
                     more: more
@@ -1441,6 +1516,11 @@ angular.module('cat.directives.sortable', ['cat.directives.paginated'])
             link: function CatSortableLink(scope, element, attrs, catPaginatedController) {
                 var title = element.text();
                 var property = attrs.catSortable || title.toLowerCase().trim();
+                var i18n = 'cc.catalysts.cat-sortable.sort.' + property;
+
+                if (!!attrs.i18n) {
+                    i18n = attrs.i18n;
+                }
 
                 // todo - make configurable
                 scope.sort = scope.listData.searchRequest.sort();
@@ -1456,7 +1536,7 @@ angular.module('cat.directives.sortable', ['cat.directives.paginated'])
                 }
 
                 element.text('');
-                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')" cat-i18n="cc.catalysts.cat-sortable.sort.' + property + '">' + title + ' <span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
+                element.append($compile('<a class="sort-link" href="" ng-click="toggleSort(\'' + property + '\')"><span cat-i18n="' + i18n + '">' + title + '</span><span class="glyphicon" ng-class="{\'' + icon + '\': sort.property == \'' + property + '\' && !sort.isDesc, \'' + icon + '-alt\': sort.property == \'' + property + '\' && sort.isDesc}"></span></a>')(scope));
             },
             controller: ["$scope", function CatSortableController($scope) {
                 $scope.toggleSort = function (property) {
@@ -1560,6 +1640,39 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+'use strict';
+
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1574,6 +1687,7 @@ _.assign(window.cat.i18n.de, {
     'cc.catalysts.general.new': 'Neu',
     'cc.catalysts.general.edit': 'Bearbeiten',
     'cc.catalysts.general.delete': 'Löschen',
+    'cc.catalysts.general.copy': 'Kopieren',
     'cc.catalysts.general.save': 'Speichern',
     'cc.catalysts.general.cancel': 'Abbrechen'
 });
@@ -1592,6 +1706,7 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.general.new': 'New',
     'cc.catalysts.general.edit': 'Edit',
     'cc.catalysts.general.delete': 'Delete',
+    'cc.catalysts.general.copy': 'Copy',
     'cc.catalysts.general.save': 'Save',
     'cc.catalysts.general.cancel': 'Cancel'
 });
@@ -1618,6 +1733,7 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
     var config = endpointConfig.config;
     var _endpointUrl = url + (config.url || endpointConfig.name);
     var _childEndpointSettings = endpointConfig.children;
+    var _endpointListConfig = config.list || {};
 
     /**
      * This helper function initializes all configured child endpoints by creating the appropriate url by appending
@@ -1724,10 +1840,13 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
     };
 
     /**
-     * This function calls the url available via #getEndpointUrl without further modification apart from adding search
-     * parameters if the searchRequest parameter is provided. It can handle either an array response in which case all
-     * elements will be mapped to the appropriate configured model or a 'paginated' result in which case an object
-     * with totalCount, facests and elements will be returned.
+     * This function calls by default the url available via #getEndpointUrl without further modification apart from
+     * adding search parameters if the searchRequest parameter is provided. In addition an alternative  endpoint url can
+     * be configured with `endpoint.list.endpoint`, such that the request will be send to another endpoint url.
+     * (#getEndpointUrl + additional_url).
+     * It can handle either an array response in which case all elements will be
+     * mapped to the appropriate configured model or a 'paginated' result in which case an object with totalCount,
+     * facests and elements will be returned.
      *
      * @param {SearchRequest} [searchRequest] if given searchRequest#urlEncoded() will be added to the request url
      * @return {[{object}]|{totalCount: {Number}, facets: [{Facet}], elements: []}} a promise wrapping either a list of
@@ -1735,7 +1854,8 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
      * as well
      */
     this.list = function (searchRequest) {
-        return $http.get(_endpointUrl + _getSearchQuery(searchRequest)).then(function (response) {
+        var url = !!_endpointListConfig.endpoint ? _endpointListConfig.endpoint : '';
+        return $http.get(_endpointUrl + url + _getSearchQuery(searchRequest)).then(function (response) {
             return _mapResponse(response.data);
         });
     };
@@ -1762,6 +1882,18 @@ function CatApiEndpoint(url, endpointConfig, $http, catConversionService, catSea
      */
     this.get = function (id) {
         return $http.get(_endpointUrl + '/' + id).then(function (response) {
+            return _mapResponse(response.data);
+        });
+    };
+
+    /**
+     * This method makes a GET request to the url available via #getEndpointUrl with the addition of '/copy' and the provided id at the end.
+     * @param id the id which will be appended as '/copy/:id' to the url
+     * @return {object} a promise wrapping a new instance of the configured model initialized with the data retrieved
+     * from the backend
+     */
+    this.copy = function (id) {
+        return $http.get(_endpointUrl + '/copy/' + id).then(function (response) {
             return _mapResponse(response.data);
         });
     };
@@ -2471,26 +2603,26 @@ angular.module('cat.service.i18n', ['cat.service.i18n.message'])
         var result = _.template(message, parameters || {}, {interpolate: /{{([\s\S\d]+?)}}/g});
 
         // lodash >=3
-        if(_.isFunction(result)) {
+        if (_.isFunction(result)) {
             return result();
         }
         return result;  // lodash <3
     })
 
 
-/**
- * @ngdoc service
- * @name cat.service.i18n:catI18nService
- * @service
- *
- * @description
- * A service to translate message keys to messages of specific locales
- *
- * @param {object} $q DOCTODO
- * @param {object} catI18nMessageSourceService DOCTODO
- * @param {object} catI18nMessageParameterResolver DOCTODO
- * @constructor
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.i18n:catI18nService
+     * @service
+     *
+     * @description
+     * A service to translate message keys to messages of specific locales
+     *
+     * @param {object} $q DOCTODO
+     * @param {object} catI18nMessageSourceService DOCTODO
+     * @param {object} catI18nMessageParameterResolver DOCTODO
+     * @constructor
+     */
     .service('catI18nService', ['$q', '$log', 'catI18nMessageSourceService', 'catI18nMessageParameterResolver', CatI18nService]);
 
 'use strict';
@@ -2793,15 +2925,15 @@ angular.module('cat.service.search', [])
             return '';
         };
     })
-/**
- * @ngdoc service
- * @name cat.service.search:catSearchService
- * @requires cat.service.search:catUrlEncodingService
- * @module cat.service.search
- *
- * @descripton
- * A helper service which encapsulates several operations which can be performed on a cat.SearchRequest
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.search:catSearchService
+     * @requires cat.service.search:catUrlEncodingService
+     * @module cat.service.search
+     *
+     * @descripton
+     * A helper service which encapsulates several operations which can be performed on a cat.SearchRequest
+     */
     .service('catSearchService', ["$location", "catUrlEncodingService", function ($location, catUrlEncodingService) {
 
         var _encodeSort = function (_sort) {
@@ -2982,11 +3114,11 @@ angular.module('cat.service.selectConfig', []).provider('catSelectConfigService'
 /**
  * Created by Mustafa on 05.08.2015.
  */
-angular.module('cat.url.resolver.service', []).service('urlResolverService', function(){
+angular.module('cat.url.resolver.service', []).service('urlResolverService', function () {
 
     'use strict';
 
-    this.getTabTemplate = function(tab, config){
+    this.getTabTemplate = function (tab, config) {
 
         var parentUrl = config.endpoint.getEndpointName();
         var parentTemplateNamePrefix = config.endpoint.getEndpointName();
@@ -3024,13 +3156,13 @@ angular.module('cat.service.validation', ['cat.service.message'])
  */
     .value('catValidations', {fieldErrors: {}})
 
-/**
- * @ngdoc service
- * @name cat.service.validation:catValidationService
- *
- * @description
- * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.validation:catValidationService
+     *
+     * @description
+     * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client
+     */
     .service('catValidationService', ["$globalMessages", "catValidations", function CatErrorHttpInterceptor($globalMessages, catValidations) {
         this.updateFromRejection = function (rejection) {
             delete catValidations.global;
@@ -3052,24 +3184,24 @@ angular.module('cat.service.validation', ['cat.service.message'])
 
         };
 
-        this.clearValidationErrors = function() {
+        this.clearValidationErrors = function () {
             delete catValidations.global;
             catValidations.fieldErrors = {};
         };
 
-        this.hasGlobalErrors = function() {
+        this.hasGlobalErrors = function () {
             return !!catValidations.global;
         };
 
-        this.getGlobalErrors = function() {
+        this.getGlobalErrors = function () {
             return catValidations.global;
         };
 
-        this.hasFieldErrors = function(fieldName) {
+        this.hasFieldErrors = function (fieldName) {
             return !!catValidations.fieldErrors[fieldName];
         };
 
-        this.getFieldErrors = function(fieldName) {
+        this.getFieldErrors = function (fieldName) {
             return catValidations.fieldErrors[fieldName];
         };
     }]);
@@ -3237,7 +3369,7 @@ function CatViewConfigService($q, catApiService, catListDataLoadingService) {
         return catListDataLoadingService.resolve(config.endpoint || name, config.defaultSort);
     }
 
-    this.getListConfig = function(config) {
+    this.getListConfig = function (config) {
         var name = toLowerCaseName(config.name);
 
         var deferredConfig = $q.defer();
@@ -3404,52 +3536,59 @@ angular.module('cat.service.loading', ['angularSpinner'])
         'CAT_LOADING_SERVICE_DEFAULTS',
         function CatLoadingService($rootScope, $timeout, usSpinnerService, CAT_LOADING_SERVICE_DEFAULTS) {
             var that = this;
-        var activeCount = 0;
-        var startTime;
-        var startTimer, stopTimer;
+            var activeCount = 0;
+            var startTime;
+            var startTimer, stopTimer;
 
-        this.start = function () {
-            if (!activeCount && !startTimer) {
-                if (!!stopTimer) {
-                    $timeout.cancel(stopTimer);
-                    stopTimer = undefined;
+            this.start = function () {
+                if (!activeCount && !startTimer) {
+                    if (!!stopTimer) {
+                        $timeout.cancel(stopTimer);
+                        stopTimer = undefined;
+                    }
+                    startTimer = $timeout(function () {
+                        usSpinnerService.spin('loading-spinner');
+                        $rootScope.loading = true;
+                        startTime = new Date().getTime();
+                    }, CAT_LOADING_SERVICE_DEFAULTS.timeout);
                 }
-                startTimer = $timeout(function () {
-                    usSpinnerService.spin('loading-spinner');
-                    $rootScope.loading = true;
-                    startTime = new Date().getTime();
-                }, CAT_LOADING_SERVICE_DEFAULTS.timeout);
-            }
-            activeCount++;
-        };
+                activeCount++;
+            };
 
-        this.stop = function () {
-            activeCount--;
-            if (!activeCount && !stopTimer) {
-                if (!!startTimer) {
-                    $timeout.cancel(startTimer);
-                    startTimer = undefined;
+            this.stop = function () {
+                activeCount--;
+                if (!activeCount && !stopTimer) {
+                    if (!!startTimer) {
+                        $timeout.cancel(startTimer);
+                        startTimer = undefined;
+                    }
+                    var now = new Date().getTime();
+                    var stopTimeout = CAT_LOADING_SERVICE_DEFAULTS.timeout + (Math.max((CAT_LOADING_SERVICE_DEFAULTS.animationDuration - (now - startTime)), 0));
+                    stopTimer = $timeout(function () {
+                        usSpinnerService.stop('loading-spinner');
+                        $rootScope.loading = false;
+                    }, stopTimeout);
                 }
-                var now = new Date().getTime();
-                var stopTimeout = CAT_LOADING_SERVICE_DEFAULTS.timeout + (Math.max((CAT_LOADING_SERVICE_DEFAULTS.animationDuration - (now - startTime)), 0));
-                stopTimer = $timeout(function () {
-                    usSpinnerService.stop('loading-spinner');
-                    $rootScope.loading = false;
-                }, stopTimeout);
-            }
-        };
+            };
 
-        $rootScope.$on('$stateChangeStart', function (event) {
-            that.start();
+            var stateChangeInProgress = false;
 
-        });
-        $rootScope.$on('$stateChangeSuccess', function (event) {
-            that.stop();
-        });
-        $rootScope.$on('$stateChangeError', function (event) {
-            that.stop();
-        });
-    }]);
+            $rootScope.$on('$stateChangeStart', function () {
+                if (!stateChangeInProgress) {
+                    that.start();
+                    stateChangeInProgress = true;
+                }
+
+            });
+            $rootScope.$on('$stateChangeSuccess', function () {
+                that.stop();
+                stateChangeInProgress = false;
+            });
+            $rootScope.$on('$stateChangeError', function () {
+                that.stop();
+                stateChangeInProgress = false;
+            });
+        }]);
 
 'use strict';
 
@@ -3500,7 +3639,7 @@ function MenuGroup(groupId, options, parent) {
         return false;
     };
 
-    this.isSubMenu = function() {
+    this.isSubMenu = function () {
         return (_options.displayAsSubMenu === true);
     };
 }
@@ -3546,9 +3685,9 @@ function Menu(menuId, options) {
         return _.flatten([_menuEntries, _.map(this.getGroups(), function (group) {
             if (group.getOptions().displayAsSubMenu === true) {
                 group.subEntries = group.getEntries();
-                return[group];
+                return [group];
             } else {
-                return[group, group.getEntries()];
+                return [group, group.getEntries()];
             }
         })]);
     };
@@ -3656,11 +3795,21 @@ angular.module('cat.service.menu', []).provider('$mainMenu', MainMenuProvider);
 
 'use strict';
 
+angular.module('cat.service.message', [])
+
 /**
  * @ngdoc service
  * @name cat.service.message:$globalMessages
  */
-angular.module('cat.service.message', []).service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
+    .service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
+
+    function Message(data) {
+        data = data || {};
+        this.text = data.text || '';
+        this.type = data.type;
+        this.timeToLive = data.timeToLive || 0;
+    }
+
     var messages = {};
 
     var self = this;
@@ -3670,7 +3819,9 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
             return [];
         }
 
-        return messages[type];
+        return _.map(messages[type], function (message) {
+            return message.text;
+        });
     };
 
     this.hasMessages = function (type) {
@@ -3690,7 +3841,15 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
         messages[type] = [];
     };
 
-    this.addMessage = function (type, message) {
+    this.clearDeadMessages = function () {
+        for (var type in messages) {
+            messages[type] = _.filter(messages[type], function (message) {
+                return message.timeToLive > 0;
+            });
+        }
+    };
+
+    this.addMessage = function (type, message, flash) {
         if (!type) {
             return;
         }
@@ -3699,7 +3858,19 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
             self.clearMessages(type);
         }
 
-        messages[type].push(message);
+        messages[type].push(new Message({
+            text: message,
+            type: type,
+            timeToLive: flash ? 1 : 0
+        }));
+    };
+
+    this.decreaseTimeToLive = function () {
+        for (var type in messages) {
+            _.forEach(messages[type], function (message) {
+                message.timeToLive--;
+            });
+        }
     };
 
     this.addMessages = function (type, messages) {
@@ -3724,7 +3895,8 @@ angular.module('cat.service.message', []).service('$globalMessages', ["$rootScop
     };
 
     $rootScope.$on('$stateChangeSuccess', function () {
-        self.clearMessages();
+        self.clearDeadMessages();
+        self.decreaseTimeToLive();
     });
 }]);
 
@@ -3804,7 +3976,8 @@ angular.module('cat.directives', [
     'cat.directives.confirmClick',
     'cat.directives.elementVisible',
     'cat.directives.fieldErrors',
-    'cat.directives.inputs',
+    'cat.directives.input',
+    'cat.directives.inputGroup',
     'cat.directives.loadMore',
     'cat.directives.menu',
     'cat.directives.select',
@@ -3813,7 +3986,8 @@ angular.module('cat.directives', [
     'cat.directives.facets',
     'cat.directives.sortable',
     'cat.directives.form',
-    'cat.directives.numbersOnly'
+    'cat.directives.numbersOnly',
+    'cat.directives.breadcrumbs'
 ]);
 
 angular.module('cat', [

@@ -44,19 +44,24 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '            <div class="btn-group">\n' +
     '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="remove()"\n' +
     '                        cat-element-visible="cat.base.delete" cat-element-data="config">\n' +
-    '                    <span class="glyphicon glyphicon-trash"></span>\n' +
+    '                    <span cat-icon="remove" size="xs"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.delete">Delete</span>\n' +
+    '                </button>\n' +
+    '                <button type="button" class="btn btn-xs btn-default" cat-confirm-click cat-on-confirm="copy()"\n' +
+    '                        cat-element-visible="cat.base.copy" cat-element-data="config">\n' +
+    '                    <span class="glyphicon glyphicon-duplicate"></span>\n' +
+    '                    <span cat-i18n="cc.catalysts.general.copy">Copy</span>\n' +
     '                </button>\n' +
     '                <button type="button" class="btn btn-xs btn-default" ng-click="edit()"\n' +
     '                        cat-element-visible="cat.base.edit" cat-element-data="config"\n' +
-    '                        cat-activate-on-shortcut="alt+e"><span class="glyphicon glyphicon-edit"></span>\n' +
+    '                        cat-activate-on-shortcut="alt+e"><span cat-icon="edit" size="xs"></span>\n' +
     '                    <span cat-i18n="cc.catalysts.general.edit">Edit</span>\n' +
     '                </button>\n' +
     '            </div>\n' +
     '            &nbsp;\n' +
     '            <a ui-sref="^.detail({id: \'new\'})" class="btn btn-xs btn-default"\n' +
     '               cat-element-visible="cat.base.new" cat-element-data="config">\n' +
-    '                <span class="glyphicon glyphicon-plus"></span>\n' +
+    '                <span cat-icon="create" size="xs"></span>\n' +
     '                <span cat-i18n="cc.catalysts.general.new">New</span></a>\n' +
     '        </div>\n' +
     '        <h5 ng-if="exists">{{title()}}</h5>\n' +
@@ -82,7 +87,6 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '        </button>\n' +
     '    </div>\n' +
     '</div>\n' +
-    '</div>\n' +
     '<div ng-if="!editDetail && !!additionalViewTemplate" ng-include="additionalViewTemplate"\n' +
     '     ng-controller="baseTabsController"></div>');
 }]);
@@ -93,7 +97,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
     '    <a class="btn btn-primary pull-right" ui-sref="{{catBaseListController.config.name}}.detail({id: \'new\'})"\n' +
     '            cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
-    '        <span class="glyphicon glyphicon-plus"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
+    '        <span cat-icon="create"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
     '    </a>\n' +
     '</h2>\n' +
     '\n' +
@@ -101,6 +105,17 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '    <ng-include src="catBaseListController.config.listTemplateUrl"></ng-include>\n' +
     '</cat-paginated>\n' +
     '');
+}]);
+
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/cat-breadcrumbs.tpl.html',
+    '<ol class="breadcrumb">\n' +
+    '    <li ng-if="showHome()"><a ui-sref="{{homeState}}" cat-i18n="cc.catalysts.cat-breadcrumbs.entry.home">Home</a></li>\n' +
+    '    <li ng-class="{\'active\':$last}" ng-repeat="bc in breadcrumbs">\n' +
+    '        <a ng-if="!$last" ng-href="{{bc.url}}" cat-i18n="{{bc.key}}">{{bc.title}}</a>\n' +
+    '        <span ng-if="$last" cat-i18n="{{bc.key}}">{{bc.title}}</span>\n' +
+    '    </li>\n' +
+    '</ol>');
 }]);
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
@@ -123,7 +138,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-input.tpl.html',
-    '<label class="col-sm-2 control-label" for="{{name}}">{{label}}</label>\n' +
+    '<label class="col-sm-2 control-label" for="{{name}}" cat-i18n="{{labelI18n}}">{{label}}</label>\n' +
     '<div class="col-sm-10">\n' +
     '    <div ng-transclude class="cat-input"></div>\n' +
     '    <cat-field-errors errors="errors" name="{{name}}"></cat-field-errors>\n' +
@@ -150,7 +165,8 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '                      cat-i18n="cc.catalysts.cat-menu.group.{{entry.completeId}}">\n' +
     '                    {{entry.getOptions().name}}\n' +
     '                </span>\n' +
-    '                <a ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" href="" class="dropdown-toggle" data-toggle="dropdown">\n' +
+    '                <a ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" href="" class="dropdown-toggle"\n' +
+    '                   data-toggle="dropdown">\n' +
     '                    <span cat-i18n="cc.catalysts.cat-menu.group.{{entry.completeId}}">{{entry.getOptions().name}}</span>\n' +
     '                    <ul ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" class="dropdown-menu">\n' +
     '                        <li ng-repeat="entry in entry.subEntries track by entry.id" ng-if="isVisible(entry)">\n' +
