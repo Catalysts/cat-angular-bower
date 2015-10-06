@@ -141,7 +141,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '<label class="col-sm-2 control-label" for="{{name}}" cat-i18n="{{labelI18n}}">{{label}}</label>\n' +
     '<div class="col-sm-10">\n' +
     '    <div ng-transclude class="cat-input"></div>\n' +
-    '    <cat-field-errors errors="errors" name="{{name}}"></cat-field-errors>\n' +
+    '    <cat-field-errors name="{{name}}"></cat-field-errors>\n' +
     '</div>\n' +
     '');
 }]);
@@ -182,6 +182,32 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '        </ul>\n' +
     '    </li>\n' +
     '</ul>');
+}]);
+
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/cat-messages.tpl.html',
+    '<div class="global-messages">\n' +
+    '    <div class="alert alert-success" ng-if="type === \'success\' && hasMessages()">\n' +
+    '        <ul>\n' +
+    '            <li ng-repeat="message in getMessages()">{{message}}</li>\n' +
+    '        </ul>\n' +
+    '    </div>\n' +
+    '    <div class="alert alert-danger" ng-if="type === \'error\' && hasMessages()">\n' +
+    '        <ul>\n' +
+    '            <li ng-repeat="message in getMessages()">{{message}}</li>\n' +
+    '        </ul>\n' +
+    '    </div>\n' +
+    '    <div class="alert alert-info" ng-if="type === \'info\' && hasMessages()">\n' +
+    '        <ul>\n' +
+    '            <li ng-repeat="message in getMessages()">{{message}}</li>\n' +
+    '        </ul>\n' +
+    '    </div>\n' +
+    '    <div class="alert alert-warning" ng-if="type === \'warning\' && hasMessages()">\n' +
+    '        <ul>\n' +
+    '            <li ng-repeat="message in getMessages()">{{message}}></li>\n' +
+    '        </ul>\n' +
+    '    </div>\n' +
+    '</div>');
 }]);
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {

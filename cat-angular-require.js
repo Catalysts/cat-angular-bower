@@ -229,6 +229,18 @@ window.cat.SearchRequest = function (searchUrlParams) {
 };
 'use strict';
 
+angular.module('cat.config.messages', [])
+
+/**
+ * @description
+ * Configuration for cat-messages.
+ */
+    .constant('catMessagesConfig', {
+        knownFieldsActive: false
+    });
+
+'use strict';
+
 /**
  * @ngdoc controller
  * @name cat.controller.base.detail:CatBaseDetailController
@@ -685,6 +697,39 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -900,13 +945,21 @@ angular.module('cat.directives.fieldErrors', ['cat.service.validation'])
     .directive('catFieldErrors', function CatFieldErrorsDirective() {
         return {
             replace: 'true',
-            restrict: 'E',
+            restrict: 'EA',
             scope: {
                 name: '@'
             },
             bindToController: true,
             controllerAs: 'catFieldErrors',
-            controller: ["$scope", "catValidationService", function CatFieldErrorsController($scope, catValidationService) {
+            require: ['catFieldErrors', '?^^catValidationGroup'],
+            link: function (scope, elem, attr, controllers) {
+                var catFieldErrors = controllers[0];
+                var /* CatValidationController */ catValidationGroupCtrl = controllers[1];
+                if (!!catValidationGroupCtrl) {
+                    catFieldErrors.contextId = catValidationGroupCtrl.getContextId();
+                }
+            },
+            controller: ["$scope", "catValidationService", function CatFieldErrorsController($scope, /* CatValidationService */  catValidationService) {
                 var that = this;
 
                 if (angular.version.major === 1 && angular.version.minor === 2) {
@@ -915,12 +968,12 @@ angular.module('cat.directives.fieldErrors', ['cat.service.validation'])
                     });
                 }
 
-                this.hasErrors = function () {
-                    return catValidationService.hasFieldErrors(that.name);
+                this.hasErrors = function() {
+                    return catValidationService.hasFieldErrors(that.name, this.contextId);
                 };
 
-                this.getErrors = function () {
-                    return catValidationService.getFieldErrors(that.name);
+                this.getErrors = function() {
+                    return catValidationService.getFieldErrors(that.name, this.contextId);
                 };
             }],
             template: '<div class="label label-danger" ng-show="catFieldErrors.hasErrors()"><ul><li ng-repeat="error in catFieldErrors.getErrors()">{{error}}</li></ul></div>'
@@ -1037,7 +1090,7 @@ angular.module('cat.directives.inputGroup', [])
  * @ngdoc directive
  * @name cat.directives.inputs:catInputGroup
  */
-    .directive('catInputGroup', function CatInputGroupDirective() {
+    .directive('catInputGroup', ["catValidationService", function CatInputGroupDirective(catValidationService) {
         return {
             restrict: 'A',
             transclude: true,
@@ -1046,15 +1099,21 @@ angular.module('cat.directives.inputGroup', [])
                 name: '@',
                 labelI18n: '@'
             },
-            link: function CatInputGroupLink(scope, element) {
+            require: '?^^catValidationGroup',
+            link: function CatInputGroupLink(scope, element, attr, /* CatValidationController */ catValidationGroupCtrl) {
+                if (!!catValidationGroupCtrl && !!catValidationService) {
+                    var context = catValidationService.getContext(catValidationGroupCtrl.getContextId());
+                    context.registerField(scope.name);
+                }
+
                 element.addClass('form-group');
             },
             templateUrl: 'template/cat-input.tpl.html'
         };
-    });
+    }]);
 'use strict';
 
-angular.module('cat.directives.input', ['cat.directives.fieldErrors'])
+angular.module('cat.directives.inputs', [])
 
 /**
  * @ngdoc directive
@@ -1160,6 +1219,45 @@ angular.module('cat.directives.menu', ['cat.service.menu', 'cat.service.elementV
             };
         }]);
 
+'use strict';
+
+angular.module('cat.directives.messages', [
+    'cat.config.messages',
+    'cat.service.validation'
+])
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.messages:catMessages
+ */
+    .directive('catMessages', function () {
+        return {
+            restrict: 'A',
+            templateUrl: 'template/cat-messages.tpl.html',
+            scope: {
+                type: '=?'
+            },
+            require: '?^^catValidationGroup',
+            link: function (scope, elem, attr, /* CatValidationController */ catValidationGroupCtrl) {
+                if (!!catValidationGroupCtrl) {
+                    scope.contextId = catValidationGroupCtrl.getContextId();
+                }
+            },
+            controller: ["$scope", "catValidationService", function ($scope, /* CatValidationService */ catValidationService) {
+                if (!$scope.type) {
+                    $scope.type = 'error';
+                }
+
+                $scope.hasMessages = function () {
+                    return catValidationService.hasGlobalErrors($scope.contextId);
+                };
+
+                $scope.getMessages = function () {
+                    return catValidationService.getGlobalErrors($scope.contextId);
+                };
+            }]
+        };
+    });
 'use strict';
 
 /**
@@ -1558,6 +1656,42 @@ angular.module('cat.directives.sortable', ['cat.directives.paginated'])
     }]);
 'use strict';
 
+function CatValidationController($scope, catValidationService) {
+    var contextId = catValidationService.createContext();
+
+    /**
+     * Retuns the context identifier
+     * @returns {string} context identifier
+     */
+    this.getContextId = function () {
+        return contextId;
+    };
+
+    $scope.$on('$destroy', function () {
+        catValidationService.destroyContext(contextId);
+    });
+}
+
+angular.module('cat.directives.validation')
+
+/**
+ * @ngdoc directive
+ * @name cat.directives.validation.inputs:catValidationGroup
+ *
+ * @description
+ * This directive provides a container which defines a new validation context. Via the controller the context can be
+ * retrieved.
+ */
+    .directive('catValidationGroup', function CatValidationGroup() {
+        return {
+            restrict: 'A',
+            controllerAs: 'catValidationGroupCtrl',
+            bindToController: true,
+            controller: ['$scope', 'catValidationService', CatValidationController]
+        };
+    });
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.form:form
@@ -1640,39 +1774,6 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1689,7 +1790,9 @@ _.assign(window.cat.i18n.de, {
     'cc.catalysts.general.delete': 'Löschen',
     'cc.catalysts.general.copy': 'Kopieren',
     'cc.catalysts.general.save': 'Speichern',
-    'cc.catalysts.general.cancel': 'Abbrechen'
+    'cc.catalysts.general.cancel': 'Abbrechen',
+    'cc.catalysts.cat-breadcrumbs.entry.home': 'Zuhause',
+    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Bearbeiten'
 });
 
 /**
@@ -1708,9 +1811,82 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.general.delete': 'Delete',
     'cc.catalysts.general.copy': 'Copy',
     'cc.catalysts.general.save': 'Save',
-    'cc.catalysts.general.cancel': 'Cancel'
+    'cc.catalysts.general.cancel': 'Cancel',
+    'cc.catalysts.cat-breadcrumbs.entry.home': 'Home',
+    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Edit'
 });
 
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+/**
+ * Capitalizes a string (first letter to uppercase)
+ * @param string
+ * @returns {string}
+ */
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+};
+
+/**
+ * Pluralizes a string
+ * @param string
+ * @returns {*}
+ */
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+
+/**
+ * Generates a new UUID
+ *
+ * @returns {string} uuid
+ */
+window.cat.util.generateUUID = function () {
+    // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+    /* jshint ignore:start */
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+    /* jshint ignore:end */
+};
+
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 'use strict';
 
 /**
@@ -2097,7 +2273,7 @@ function CatApiServiceProvider() {
  */
 angular
     .module('cat.service.api', ['cat.service.conversion', 'cat.service.search'])
-    .constant('CAT_API_SERVICE_DEFAULTS', {endpointUrlPrefix: '/api/'})
+    .constant('CAT_API_SERVICE_DEFAULTS', {endpointUrlPrefix: 'api/'})
     .provider('catApiService', CatApiServiceProvider);
 
 /**
@@ -3140,13 +3316,143 @@ angular.module('cat.url.resolver.service', []).service('urlResolverService', fun
 'use strict';
 
 /**
+ * Validation Context which holds all information about a validation context
+ * @param {string} uuid context identifier (optional)
+ * @constructor
+ */
+function ValidationContext(uuid) {
+    this.uuid = uuid;
+    this.global = undefined;
+    this.fieldErrors = {};
+    this.knownFields = [];
+
+    /**
+     * Registers a field name to be a known field which is visible in the ui
+     * @param {string} name name of the field
+     */
+    this.registerField = function (name) {
+        if (!_.contains(this.knownFields, name)) {
+            this.knownFields.push(name);
+        }
+    };
+}
+
+function CatValidationService($globalMessages, catValidations, catValidationContexts, catMessagesConfig) {
+
+    /**
+     * Returns the validations context for a specific context identifier.
+     * @param {string} contextId context identifier
+     * @returns {ValidationContext} validation context
+     */
+    this.getContext = function (contextId) {
+        if (contextId !== undefined) {
+            var validations = catValidationContexts[contextId];
+            if (validations === undefined) {
+                throw new Error('Unknown contextId: ' + contextId);
+            }
+            return validations;
+        } else {
+            return catValidations;
+        }
+    };
+
+    /**
+     * Creates a new validation context.
+     * @returns {string} context identifier
+     */
+    this.createContext = function () {
+        var uuid = window.cat.util.generateUUID();
+        catValidationContexts[uuid] = new ValidationContext(uuid);
+        return uuid;
+    };
+
+    /**
+     * Removes/unregisters the context from the validation service.
+     * @param contextId context context identifier
+     */
+    this.destroyContext = function (contextId) {
+        delete catValidationContexts[contextId];
+    };
+
+    this.updateFromRejection = function (rejection) {
+        var contextId;
+        if (!!rejection.config) {
+            contextId = rejection.config.catValidationContextId;
+        }
+
+        var context = this.getContext(contextId);
+
+        var fieldErrors = context.fieldErrors = {};
+
+        if (!!rejection.data.fieldErrors) {
+            // group by field
+            _.forEach(rejection.data.fieldErrors, function (fieldError) {
+                // Allow config to switch between displaying errors at the field and displaying errors at known fields or globally
+                if (catMessagesConfig.knownFieldsActive === true) {
+                    // If the error is for a known field, show the error at the field.
+                    // If not, display it as a global error.
+                    if (_.contains(context.knownFields, fieldError.field)) {
+                        fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
+                        fieldErrors[fieldError.field].push(fieldError.message);
+                    } else {
+                        rejection.data.globalErrors = rejection.data.globalErrors || [];
+                        rejection.data.globalErrors.push(fieldError.message);
+                    }
+                } else {
+                    fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
+                    fieldErrors[fieldError.field].push(fieldError.message);
+                }
+            });
+        }
+
+        if (!!rejection.data.globalErrors) {
+            context.global = rejection.data.globalErrors;
+
+            // TODO is this also context dependend? or even necessary?
+            $globalMessages.addMessages('error', rejection.data.globalErrors, context);
+        }
+    };
+
+    this.clearValidationErrors = function (contextId) {
+        delete this.getContext(contextId).global;
+        this.getContext(contextId).fieldErrors = {};
+    };
+
+    this.hasGlobalErrors = function (contextId) {
+        var globalErrors = this.getContext(contextId).global;
+        return !!globalErrors && globalErrors.length > 0;
+    };
+
+    this.getGlobalErrors = function (contextId) {
+        return this.getContext(contextId).global;
+    };
+
+    this.hasFieldErrors = function (fieldName, contextId) {
+        var fieldErrors = this.getContext(contextId).fieldErrors[fieldName];
+        return !!fieldErrors && fieldErrors.length > 0;
+    };
+
+    this.getFieldErrors = function (fieldName, contextId) {
+        return this.getContext(contextId).fieldErrors[fieldName];
+    };
+
+    this.prepareConfig = function (contextId, config) {
+        return _.assign(config || {}, {
+            catValidationContextId: contextId
+        });
+    };
+}
+
+/**
  * @ngdoc overview
  * @name cat.service.validation
  *
  * @descripton
  * module wrapping the validation logic
  */
-angular.module('cat.service.validation', ['cat.service.message'])
+angular.module('cat.service.validation', [
+    'cat.service.message'
+])
 /**
  * @ngdoc object
  * @name cat.service.validation:catValidations
@@ -3154,58 +3460,27 @@ angular.module('cat.service.validation', ['cat.service.message'])
  * @description
  * value holding 'global' and 'field' errors
  */
-    .value('catValidations', {fieldErrors: {}})
+    .value('catValidations', new ValidationContext())
 
-    /**
-     * @ngdoc service
-     * @name cat.service.validation:catValidationService
-     *
-     * @description
-     * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client
-     */
-    .service('catValidationService', ["$globalMessages", "catValidations", function CatErrorHttpInterceptor($globalMessages, catValidations) {
-        this.updateFromRejection = function (rejection) {
-            delete catValidations.global;
+/**
+ * @ngdoc object
+ * @name cat.service.validation:catValidationContexts
+ *
+ * @description
+ * value holding 'global' and 'field' errors
+ */
+    .value('catValidationContexts', {})
 
-            if (!!rejection.data.globalErrors) {
-                catValidations.global = rejection.data.globalErrors;
-                $globalMessages.addMessages('error', rejection.data.globalErrors);
-            }
-
-            var fieldErrors = catValidations.fieldErrors = {};
-
-            if (!!rejection.data.fieldErrors) {
-                // group by field
-                _.forEach(rejection.data.fieldErrors, function (fieldError) {
-                    fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                    fieldErrors[fieldError.field].push(fieldError.message);
-                });
-            }
-
-        };
-
-        this.clearValidationErrors = function () {
-            delete catValidations.global;
-            catValidations.fieldErrors = {};
-        };
-
-        this.hasGlobalErrors = function () {
-            return !!catValidations.global;
-        };
-
-        this.getGlobalErrors = function () {
-            return catValidations.global;
-        };
-
-        this.hasFieldErrors = function (fieldName) {
-            return !!catValidations.fieldErrors[fieldName];
-        };
-
-        this.getFieldErrors = function (fieldName) {
-            return catValidations.fieldErrors[fieldName];
-        };
-    }]);
-
+/**
+ * @ngdoc service
+ * @name cat.service.validation:catValidationService
+ *
+ * @description
+ * Service which maps the 'fieldErrors' list recieved from the backend to a usable map for the client. All methods
+ * have a 'context' parameter as the last parameter. If no context is provided the global context will be used,
+ * otherwise the field error messages will be assigned to the specified context.
+ */
+    .service('catValidationService', ['$globalMessages', 'catValidations', 'catValidationContexts', 'catMessagesConfig', CatValidationService]);
 /**
  * @author Thomas Scheinecker, Catalysts GmbH.
  */
@@ -3481,8 +3756,7 @@ angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service
  * @ngdoc service
  * @name cat.service.httpIntercept:errorHttpInterceptor
  */
-
-    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "catValidationService", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, catValidationService) {
+    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "catValidationMessageHandler", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, catValidationMessageHandler) {
         return {
             'request': function (config) {
                 loadingService.start();
@@ -3498,18 +3772,7 @@ angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service
             },
             'responseError': function (rejection) {
                 loadingService.stop();
-                $globalMessages.clearMessages('error');
-
-                if (!!rejection.data.error) {
-                    var error = '[' + rejection.status + ' - ' + rejection.statusText + '] ' + rejection.data.error;
-                    if (!!rejection.data.cause) {
-                        error += '\n' + rejection.data.cause;
-                    }
-                    $globalMessages.addMessage('error', error);
-                }
-
-                catValidationService.updateFromRejection(rejection);
-
+                catValidationMessageHandler.handleRejectedResponse(rejection);
                 return $q.reject(rejection);
             }
         };
@@ -3795,13 +4058,7 @@ angular.module('cat.service.menu', []).provider('$mainMenu', MainMenuProvider);
 
 'use strict';
 
-angular.module('cat.service.message', [])
-
-/**
- * @ngdoc service
- * @name cat.service.message:$globalMessages
- */
-    .service('$globalMessages', ["$rootScope", function CatGlobalMessages($rootScope) {
+function CatGlobalMessages($rootScope) {
 
     function Message(data) {
         data = data || {};
@@ -3898,57 +4155,38 @@ angular.module('cat.service.message', [])
         self.clearDeadMessages();
         self.decreaseTimeToLive();
     });
-}]);
+}
+
+angular.module('cat.service.message', [
+    'cat.config.messages'
+])
 
 /**
- * Created by tscheinecker on 26.08.2014.
+ * @ngdoc service
+ * @name cat.service.message:catValidationMessageHandler
  */
-'use strict';
+    .service('catValidationMessageHandler', ["$globalMessages", "catValidationService", function CatValidationMessageHandler($globalMessages, catValidationService) {
+        this.handleRejectedResponse = function (rejection) {
+            $globalMessages.clearMessages('error');
 
-window.cat.util = window.cat.util || {};
+            if (!!rejection.data.error) {
+                var error = '[' + rejection.status + ' - ' + rejection.statusText + '] ' + rejection.data.error;
+                if (!!rejection.data.cause) {
+                    error += '\n' + rejection.data.cause;
+                }
+                $globalMessages.addMessage('error', error);
+            }
 
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-
-};
-
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
+            catValidationService.updateFromRejection(rejection);
+        };
+    }])
 
 /**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
+ * @ngdoc service
+ * @name cat.service.message:$globalMessages
  */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
+    .service('$globalMessages', ['$rootScope', CatGlobalMessages]);
+angular.module('cat.filters.replaceText', []);
 angular.module('cat.filters', ['cat.filters.replaceText']);
 
 angular.module('cat.service', [
@@ -3969,6 +4207,9 @@ angular.module('cat.service', [
 ]);
 
 angular.module('cat.controller', ['cat.controller.base.detail', 'cat.controller.base.list']);
+
+angular.module('cat.directives.validation', ['cat.service.validation']);
+
 
 angular.module('cat.directives', [
     'cat.directives.autofocus',
