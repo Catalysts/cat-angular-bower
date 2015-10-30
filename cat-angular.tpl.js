@@ -138,7 +138,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-input.tpl.html',
-    '<label class="col-sm-2 control-label" for="{{name}}" cat-i18n="{{labelI18n}}">{{label}}</label>\n' +
+    '<label class="col-sm-2 control-label" for="{{name}}" cat-i18n="{{catI18nKey}}">{{label}}</label>\n' +
     '<div class="col-sm-10">\n' +
     '    <div ng-transclude class="cat-input"></div>\n' +
     '    <cat-field-errors name="{{name}}"></cat-field-errors>\n' +

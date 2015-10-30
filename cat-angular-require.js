@@ -697,39 +697,6 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
-'use strict';
-
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -1097,7 +1064,7 @@ angular.module('cat.directives.inputGroup', [])
             scope: {
                 label: '@',
                 name: '@',
-                labelI18n: '@'
+                catI18nKey: '@'
             },
             require: '?^^catValidationGroup',
             link: function CatInputGroupLink(scope, element, attr, /* CatValidationController */ catValidationGroupCtrl) {
@@ -1616,8 +1583,8 @@ angular.module('cat.directives.sortable', ['cat.directives.paginated'])
                 var property = attrs.catSortable || title.toLowerCase().trim();
                 var i18n = 'cc.catalysts.cat-sortable.sort.' + property;
 
-                if (!!attrs.i18n) {
-                    i18n = attrs.i18n;
+                if (!!attrs.catI18nKey) {
+                    i18n = attrs.catI18nKey;
                 }
 
                 // todo - make configurable
@@ -1774,6 +1741,39 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+'use strict';
+
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -1816,77 +1816,6 @@ _.assign(window.cat.i18n.en, {
     'cc.catalysts.cat-breadcrumbs.entry.edit': 'Edit'
 });
 
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-/**
- * Capitalizes a string (first letter to uppercase)
- * @param string
- * @returns {string}
- */
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-};
-
-/**
- * Pluralizes a string
- * @param string
- * @returns {*}
- */
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-
-/**
- * Generates a new UUID
- *
- * @returns {string} uuid
- */
-window.cat.util.generateUUID = function () {
-    // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
-    /* jshint ignore:start */
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-    /* jshint ignore:end */
-};
-
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 'use strict';
 
 /**
@@ -4186,6 +4115,77 @@ angular.module('cat.service.message', [
  * @name cat.service.message:$globalMessages
  */
     .service('$globalMessages', ['$rootScope', CatGlobalMessages]);
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+/**
+ * Capitalizes a string (first letter to uppercase)
+ * @param string
+ * @returns {string}
+ */
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+};
+
+/**
+ * Pluralizes a string
+ * @param string
+ * @returns {*}
+ */
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+
+/**
+ * Generates a new UUID
+ *
+ * @returns {string} uuid
+ */
+window.cat.util.generateUUID = function () {
+    // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+    /* jshint ignore:start */
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+    /* jshint ignore:end */
+};
+
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
 angular.module('cat.filters.replaceText', []);
 angular.module('cat.filters', ['cat.filters.replaceText']);
 
