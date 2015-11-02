@@ -742,6 +742,39 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -1786,39 +1819,6 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -3295,6 +3295,7 @@ angular.module('cat.url.resolver.service', []).service('urlResolverService', fun
  * @constructor
  */
 function ValidationContext(uuid) {
+    var that = this;
     this.uuid = uuid;
     this.global = undefined;
     this.fieldErrors = {};
@@ -3305,13 +3306,14 @@ function ValidationContext(uuid) {
      * @param {string} name name of the field
      */
     this.registerField = function (name) {
-        if (!_.contains(this.knownFields, name)) {
-            this.knownFields.push(name);
+        if (!_.contains(that.knownFields, name)) {
+            that.knownFields.push(name);
         }
     };
 }
 
 function CatValidationService($globalMessages, catValidations, catValidationContexts, catMessagesConfig) {
+    var that = this;
 
     /**
      * Returns the validations context for a specific context identifier.
@@ -3354,7 +3356,7 @@ function CatValidationService($globalMessages, catValidations, catValidationCont
             contextId = rejection.config.catValidationContextId;
         }
 
-        var context = this.getContext(contextId);
+        var context = that.getContext(contextId);
 
         var fieldErrors = context.fieldErrors = {};
 
@@ -3388,26 +3390,27 @@ function CatValidationService($globalMessages, catValidations, catValidationCont
     };
 
     this.clearValidationErrors = function (contextId) {
-        delete this.getContext(contextId).global;
-        this.getContext(contextId).fieldErrors = {};
+        var context = that.getContext(contextId);
+        delete context.global;
+        context.fieldErrors = {};
     };
 
     this.hasGlobalErrors = function (contextId) {
-        var globalErrors = this.getContext(contextId).global;
+        var globalErrors = that.getContext(contextId).global;
         return !!globalErrors && globalErrors.length > 0;
     };
 
     this.getGlobalErrors = function (contextId) {
-        return this.getContext(contextId).global;
+        return that.getContext(contextId).global;
     };
 
     this.hasFieldErrors = function (fieldName, contextId) {
-        var fieldErrors = this.getContext(contextId).fieldErrors[fieldName];
+        var fieldErrors = that.getContext(contextId).fieldErrors[fieldName];
         return !!fieldErrors && fieldErrors.length > 0;
     };
 
     this.getFieldErrors = function (fieldName, contextId) {
-        return this.getContext(contextId).fieldErrors[fieldName];
+        return that.getContext(contextId).fieldErrors[fieldName];
     };
 
     this.prepareConfig = function (contextId, config) {
