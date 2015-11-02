@@ -1100,7 +1100,7 @@ angular.module('cat.directives.inputGroup', [])
 
 /**
  * @ngdoc directive
- * @name cat.directives.inputs:catInputGroup
+ * @name cat.directives.inputGroup:catInputGroup
  */
     .directive('catInputGroup', ["catValidationService", function CatInputGroupDirective(catValidationService) {
         return {
@@ -1125,11 +1125,11 @@ angular.module('cat.directives.inputGroup', [])
     }]);
 'use strict';
 
-angular.module('cat.directives.inputs', [])
+angular.module('cat.directives.input', [])
 
 /**
  * @ngdoc directive
- * @name cat.directives.inputs:input
+ * @name cat.directives.input:input
  */
     .directive('input', function CatInputDirective() {
         return {
