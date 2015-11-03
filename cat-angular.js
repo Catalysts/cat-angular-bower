@@ -274,18 +274,6 @@ window.cat.SearchRequest = function (searchUrlParams) {
 };
 'use strict';
 
-angular.module('cat.config.messages', [])
-
-/**
- * @description
- * Configuration for cat-messages.
- */
-    .constant('catMessagesConfig', {
-        knownFieldsActive: false
-    });
-
-'use strict';
-
 /**
  * @ngdoc controller
  * @name cat.controller.base.detail:CatBaseDetailController
@@ -742,35 +730,14 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
-
-angular.module('cat.filters.replaceText', [])
+angular.module('cat.config.messages', [])
 
 /**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
  * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
+ * Configuration for cat-messages.
  */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
+    .constant('catMessagesConfig', {
+        knownFieldsActive: false
     });
 
 'use strict';
@@ -1819,6 +1786,39 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
+'use strict';
+
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -2750,7 +2750,7 @@ angular.module('cat.service.i18n', ['cat.service.i18n.message'])
  * A function which accepts a message and parameters and returns the resolved message
  */
     .value('catI18nMessageParameterResolver', function (message, parameters) {
-        var result = _.template(message, parameters || {}, {interpolate: /{{([\s\S\d]+?)}}/g});
+        var result = _.template(message, null, {interpolate: /{{([\s\S\d]+?)}}/g})(parameters || {});
 
         // lodash >=3
         if (_.isFunction(result)) {
@@ -3264,6 +3264,54 @@ angular.module('cat.service.selectConfig', []).provider('catSelectConfigService'
 /**
  * Created by Mustafa on 05.08.2015.
  */
+
+'use strict';
+
+function CatDirectiveConfigBuilder(data) {
+    this.build = function () {
+        return new CatDirectiveConfig(angular.copy(data));
+    };
+}
+
+function CatDirectiveConfig(data) {
+    /**
+     * The name of the directive, will also be used as the controller name by default
+     * @type {string}
+     */
+    this.name = data && data.name;
+
+}
+
+/**
+ *
+ * @param {string} module angular module name
+ * @param {Array} [deps] angular module dependencies (if provided a new module will be created)
+ * @param {CatDirectiveConfig} config the configuration object for the directive
+ * @returns {*|{}}
+ */
+function catDirective(module, deps, config) {
+    if (angular.isUndefined(config)) {
+        config = deps;
+        deps = undefined;
+    }
+
+    function catDirectiveFactory(catDirectiveTemplateResolverService) {
+        return angular.extend({
+            controllerAs: config.name,
+            bindToController: true,
+            templateUrl: function () {
+                return catDirectiveTemplateResolverService.getTemplateUrlForDirectiveName(config.name);
+            }
+        }, config);
+    }
+
+    return angular.module(module, deps)
+        .directive(config.name, [
+            'catDirectiveTemplateResolverService',
+            catDirectiveFactory
+        ]);
+}
+
 angular.module('cat.url.resolver.service', []).service('urlResolverService', function () {
 
     'use strict';
@@ -3929,7 +3977,7 @@ function Menu(menuId, options) {
             } else {
                 return [group, group.getEntries()];
             }
-        })]);
+        })], !!_.flattenDeep);
     };
 
     this.isMenu = function () {
