@@ -1860,6 +1860,77 @@ _.assign(window.cat.i18n.en, {
 
 'use strict';
 
+window.cat.util = window.cat.util || {};
+
+/**
+ * Capitalizes a string (first letter to uppercase)
+ * @param string
+ * @returns {string}
+ */
+window.cat.util.pluralize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+    var lastChar = string[string.length - 1];
+
+    switch (lastChar) {
+        case 'y':
+            return string.substring(0, string.length - 1) + 'ies';
+        case 's':
+            return string + 'es';
+        default :
+            return string + 's';
+    }
+};
+
+/**
+ * Pluralizes a string
+ * @param string
+ * @returns {*}
+ */
+window.cat.util.capitalize = function (string) {
+    if (_.isUndefined(string) || string.length === 0) {
+        return '';
+    }
+
+    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+};
+
+/**
+ * Generates a new UUID
+ *
+ * @returns {string} uuid
+ */
+window.cat.util.generateUUID = function () {
+    // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+    /* jshint ignore:start */
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+    /* jshint ignore:end */
+};
+
+/**
+ * Created by tscheinecker on 01.08.2014.
+ */
+
+'use strict';
+
+window.cat.util = window.cat.util || {};
+
+window.cat.models = window.cat.models || {};
+
+/**
+ * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
+ * @param name the name of the 'entity' for which the constructor has to be returned
+ * @returns {Constructor}
+ */
+window.cat.util.defaultModelResolver = function (name) {
+    return window.cat.models[name];
+};
+'use strict';
+
 /**
  * @name CatApiEndpoint
  *
@@ -3408,11 +3479,17 @@ function CatValidationService($globalMessages, catValidations, catValidationCont
 
     this.hasAnyFieldErrors = function (contextId) {
         var fieldErrors = that.getContext(contextId).fieldErrors;
-        return !_.$isEmpty(fieldErrors);
+        return !_.isEmpty(fieldErrors);
     };
 
     this.getFieldErrors = function (fieldName, contextId) {
         return that.getContext(contextId).fieldErrors[fieldName];
+    };
+
+    this.hasErrors = function (contextId) {
+        var hasGlobalErrors = this.hasGlobalErrors(contextId);
+        var hasFieldErrors = this.hasAnyFieldErrors(contextId);
+        return hasGlobalErrors || hasFieldErrors;
     };
 
     this.prepareConfig = function (contextId, config) {
@@ -4165,77 +4242,6 @@ angular.module('cat.service.message', [
  * @name cat.service.message:$globalMessages
  */
     .service('$globalMessages', ['$rootScope', CatGlobalMessages]);
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-/**
- * Capitalizes a string (first letter to uppercase)
- * @param string
- * @returns {string}
- */
-window.cat.util.pluralize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-    var lastChar = string[string.length - 1];
-
-    switch (lastChar) {
-        case 'y':
-            return string.substring(0, string.length - 1) + 'ies';
-        case 's':
-            return string + 'es';
-        default :
-            return string + 's';
-    }
-};
-
-/**
- * Pluralizes a string
- * @param string
- * @returns {*}
- */
-window.cat.util.capitalize = function (string) {
-    if (_.isUndefined(string) || string.length === 0) {
-        return '';
-    }
-
-    return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-};
-
-/**
- * Generates a new UUID
- *
- * @returns {string} uuid
- */
-window.cat.util.generateUUID = function () {
-    // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
-    /* jshint ignore:start */
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-    /* jshint ignore:end */
-};
-
-/**
- * Created by tscheinecker on 01.08.2014.
- */
-
-'use strict';
-
-window.cat.util = window.cat.util || {};
-
-window.cat.models = window.cat.models || {};
-
-/**
- * This helper function is used to acquire the constructor function which is used as a 'model' for the api endpoint.
- * @param name the name of the 'entity' for which the constructor has to be returned
- * @returns {Constructor}
- */
-window.cat.util.defaultModelResolver = function (name) {
-    return window.cat.models[name];
-};
 angular.module('cat.filters.replaceText', []);
 angular.module('cat.filters', ['cat.filters.replaceText']);
 
