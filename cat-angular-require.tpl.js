@@ -153,6 +153,15 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
 }]);
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
+  $templateCache.put('template/cat-global-errors.tpl.html',
+    '<div class="alert alert-danger" ng-show="catGlobalErrors.hasErrors()">\n' +
+    '    <ul ng-class="catGlobalErrors.getErrors().length === 1 ? \'list-unstyled unstyled\' : \'\'">\n' +
+    '        <li ng-repeat="error in catGlobalErrors.getErrors()">{{error}}</li>\n' +
+    '    </ul>\n' +
+    '</div>');
+}]);
+
+angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-input.tpl.html',
     '<label class="col-sm-2 control-label" for="{{name}}" cat-i18n="{{catI18nKey}}">{{label}}</label>\n' +
     '<div class="col-sm-10">\n' +

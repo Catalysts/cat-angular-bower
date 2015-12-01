@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-.cat-input + .label {
-  float: left;
-  margin-bottom: 4px;
+.cat-input + .cat-field-errors {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  float: left;
 }
-.cat-input + .label > ul {
+.cat-field-errors {
+  display: inline-block;
+  margin-bottom: 4px;
+}
+.cat-field-errors > ul {
   margin: 0;
   -webkit-padding-start: 0;
   -moz-padding-start: 0;
