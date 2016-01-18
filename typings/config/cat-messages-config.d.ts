@@ -1,0 +1,3 @@
+interface CatMessagesConfig {
+    knownFieldsActive: boolean;
+}
