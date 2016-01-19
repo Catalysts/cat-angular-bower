@@ -288,6 +288,23 @@ declare class CatBaseTabsController<T> {
     constructor($scope: ICatBaseTabsScope<T>, $controller: any, $stateParams: ICatBaseTabsStateParams, $location: ILocationService, catElementVisibilityService: ICatElementVisibilityService, config: ICatDetailConfig, urlResolverService: ICatUrlResolverService);
 }
 
+interface CatReplaceTextFilter {
+    /**
+     * @ngdoc filter
+     * @name cat.filters.replaceText:replaceText
+     *
+     * @description
+     * Replaces text passages with other text, based on regular expressions
+     *
+     * @param {string} text original text
+     * @param {string} pattern regular expression
+     * @param {object} options regular expression options
+     * @param {string} replacement replacement text
+     */
+    (text?: string, pattern?: string, options?: string, replacement?: string): string | void;
+}
+declare function catReplaceTextFilterFactory(): CatReplaceTextFilter;
+
 declare function catAutofocusDirectiveFactory($timeout: ITimeoutService): IDirective;
 
 interface CatBreadcrumbsConfig {
@@ -630,23 +647,6 @@ declare function catFormDirectiveFactory($timeout: ITimeoutService): {
 };
 
 declare function catNumbersOnlyDirectiveFactory(): IDirective;
-
-interface CatReplaceTextFilter {
-    /**
-     * @ngdoc filter
-     * @name cat.filters.replaceText:replaceText
-     *
-     * @description
-     * Replaces text passages with other text, based on regular expressions
-     *
-     * @param {string} text original text
-     * @param {string} pattern regular expression
-     * @param {object} options regular expression options
-     * @param {string} replacement replacement text
-     */
-    (text?: string, pattern?: string, options?: string, replacement?: string): string | void;
-}
-declare function catReplaceTextFilterFactory(): CatReplaceTextFilter;
 
 
 
@@ -1576,7 +1576,6 @@ declare class CatErrorHttpInterceptor implements IHttpInterceptor {
     response(success: any): any;
     responseError(rejection: any): IPromise<any>;
 }
-declare function catErrorHttpInterceptorFactory($q: IQService, loadingService: CatLoadingService, catValidationMessageHandler: CatValidationMessageHandler): CatErrorHttpInterceptor;
 
 interface CatLoadingServiceOptions {
     timeout: number;

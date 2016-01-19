@@ -269,23 +269,6 @@ angular
     knownFieldsActive: false
 });
 
-function catReplaceTextFilterFactory() {
-    return function (text, pattern, options, replacement) {
-        if (pattern === void 0) { pattern = '\n'; }
-        if (options === void 0) { options = 'g'; }
-        if (replacement === void 0) { replacement = ', '; }
-        if (!text) {
-            return text;
-        }
-        else {
-            return String(text).replace(new RegExp(pattern, options), replacement);
-        }
-    };
-}
-angular
-    .module('cat.filters.replaceText', [])
-    .filter('replaceText', [catReplaceTextFilterFactory]);
-
 var CatBaseDetailController = (function () {
     /**
      * @ngdoc controller
@@ -754,38 +737,6 @@ angular
     'cat.service.elementVisibility',
     'cat.url.resolver.service'
 ]).controller('CatBaseTabsController', CatBaseTabsController);
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n['de'] = _.assign({
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
-    'cc.catalysts.general.new': 'Neu',
-    'cc.catalysts.general.edit': 'Bearbeiten',
-    'cc.catalysts.general.delete': 'Löschen',
-    'cc.catalysts.general.copy': 'Kopieren',
-    'cc.catalysts.general.save': 'Speichern',
-    'cc.catalysts.general.cancel': 'Abbrechen',
-    'cc.catalysts.cat-breadcrumbs.entry.home': 'Zuhause',
-    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Bearbeiten',
-    'cc.catalysts.cat-field-errors-info.text': 'Beim speichern ist ein Fehler aufgetreten. Bitte überprüfen Sie Ihre Eingabe.',
-    'cc.catalysts.cat-validation-service.networkError': 'Es ist ein Netzwerkfehler aufgetreten.'
-}, window.cat.i18n['de']);
-
-window.cat.i18n = window.cat.i18n || {};
-window.cat.i18n['en'] = _.assign({
-    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
-    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
-    'cc.catalysts.general.new': 'New',
-    'cc.catalysts.general.edit': 'Edit',
-    'cc.catalysts.general.delete': 'Delete',
-    'cc.catalysts.general.copy': 'Copy',
-    'cc.catalysts.general.save': 'Save',
-    'cc.catalysts.general.cancel': 'Cancel',
-    'cc.catalysts.cat-breadcrumbs.entry.home': 'Home',
-    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Edit',
-    'cc.catalysts.cat-field-errors-info.text': 'Errors occured during save. Please verify your input.',
-    'cc.catalysts.cat-validation-service.networkError': 'A network error occurred.'
-}, window.cat.i18n['en']);
 
 function catAutofocusDirectiveFactory($timeout) {
     var catAutofocusLink = function (scope, element) {
@@ -1453,7 +1404,7 @@ var CatPaginatedController = (function () {
         this.$scope.$watch('listData.sort', function (newVal) {
             if (!!newVal) {
                 console.log('broadcasting sort changed: ' + angular.toJson(newVal));
-                this.$scope.$parent.$broadcast('SortChanged', newVal);
+                _this.$scope.$parent.$broadcast('SortChanged', newVal);
             }
         }, true);
         this.$scope.$watch('listData.search', this.updateSearch, true);
@@ -1476,7 +1427,7 @@ var CatPaginatedController = (function () {
             _this.reload(0, true);
         });
         this.$scope.$on('SortChanged', function (event, value) {
-            this.sort(value);
+            _this.sort(value);
         });
     };
     CatPaginatedController.prototype.handlePaginationTextResponse = function (prop) {
@@ -1613,14 +1564,14 @@ var CatSelectController = (function () {
             throw new Error('At least one of "config" or "options" has to be specified');
         }
         var searchRequestAdapter = options.searchRequestAdapter || {};
-        var transport, quietMillis, searchRequestFunc = options.search || function (term, page) {
+        var transport, quietMillis, searchRequestFunc = options.search || (function (term, page) {
             return {
                 'search.name': term,
                 page: page
             };
-        }, filterFunc = options.filter || function (term) {
+        }), filterFunc = options.filter || (function (term) {
             return true;
-        };
+        });
         var endpoint = options.endpoint;
         if (_.isArray(endpoint)) {
             transport = function (queryParams) {
@@ -1683,6 +1634,7 @@ var CatSelectController = (function () {
         }, options['ui-select2']);
     }
     CatSelectController.prototype.fetchElements = function (endpoint, sort, searchRequestAdapter) {
+        var _this = this;
         return function (queryParams) {
             var searchRequest = new window.cat.SearchRequest(queryParams.data);
             searchRequest.sort(sort || { property: 'name', isDesc: false });
@@ -1693,7 +1645,7 @@ var CatSelectController = (function () {
                 _.assign(searchRequest, searchRequestAdapter);
             }
             else {
-                this.$log.warn('searchRequestAdapter has to be either a function or an object but was ' + (typeof searchRequestAdapter));
+                _this.$log.warn('searchRequestAdapter has to be either a function or an object but was ' + (typeof searchRequestAdapter));
             }
             return endpoint.list(searchRequest).then(queryParams.success);
         };
@@ -1885,7 +1837,7 @@ function catFormDirectiveFactory($timeout) {
             }
         });
         // handle browser window/tab close
-        $(window).on('beforeunload', function (event) {
+        $(window).on('beforeunload', function () {
             if (formCtrl.$dirty) {
                 return warningMessage;
             }
@@ -1943,6 +1895,92 @@ angular.module('cat.directives.numbersOnly', [])
     .directive('numbersOnly', [
     catNumbersOnlyDirectiveFactory
 ]);
+
+function catReplaceTextFilterFactory() {
+    return function (text, pattern, options, replacement) {
+        if (pattern === void 0) { pattern = '\n'; }
+        if (options === void 0) { options = 'g'; }
+        if (replacement === void 0) { replacement = ', '; }
+        if (!text) {
+            return text;
+        }
+        else {
+            return String(text).replace(new RegExp(pattern, options), replacement);
+        }
+    };
+}
+angular
+    .module('cat.filters.replaceText', [])
+    .filter('replaceText', [catReplaceTextFilterFactory]);
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n['de'] = _.assign({
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} Einträge gefunden. Einträge {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'Keine Einträge gefunden',
+    'cc.catalysts.general.new': 'Neu',
+    'cc.catalysts.general.edit': 'Bearbeiten',
+    'cc.catalysts.general.delete': 'Löschen',
+    'cc.catalysts.general.copy': 'Kopieren',
+    'cc.catalysts.general.save': 'Speichern',
+    'cc.catalysts.general.cancel': 'Abbrechen',
+    'cc.catalysts.cat-breadcrumbs.entry.home': 'Zuhause',
+    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Bearbeiten',
+    'cc.catalysts.cat-field-errors-info.text': 'Beim speichern ist ein Fehler aufgetreten. Bitte überprüfen Sie Ihre Eingabe.',
+    'cc.catalysts.cat-validation-service.networkError': 'Es ist ein Netzwerkfehler aufgetreten.'
+}, window.cat.i18n['de']);
+
+window.cat.i18n = window.cat.i18n || {};
+window.cat.i18n['en'] = _.assign({
+    'cc.catalysts.cat-paginated.itemsFound': '{{count}} entries found. Entries {{firstResult}}-{{lastResult}}',
+    'cc.catalysts.cat-paginated.noItemsFound': 'No entries found',
+    'cc.catalysts.general.new': 'New',
+    'cc.catalysts.general.edit': 'Edit',
+    'cc.catalysts.general.delete': 'Delete',
+    'cc.catalysts.general.copy': 'Copy',
+    'cc.catalysts.general.save': 'Save',
+    'cc.catalysts.general.cancel': 'Cancel',
+    'cc.catalysts.cat-breadcrumbs.entry.home': 'Home',
+    'cc.catalysts.cat-breadcrumbs.entry.edit': 'Edit',
+    'cc.catalysts.cat-field-errors-info.text': 'Errors occured during save. Please verify your input.',
+    'cc.catalysts.cat-validation-service.networkError': 'A network error occurred.'
+}, window.cat.i18n['en']);
+
+window.cat = window.cat || {};
+window.cat.models = window.cat.models || {};
+window.cat.util = window.cat.util || {
+    pluralize: function (string) {
+        if (_.isUndefined(string) || string.length === 0) {
+            return '';
+        }
+        var lastChar = string[string.length - 1];
+        switch (lastChar) {
+            case 'y':
+                return string.substring(0, string.length - 1) + 'ies';
+            case 's':
+                return string + 'es';
+            default:
+                return string + 's';
+        }
+    },
+    capitalize: function (string) {
+        if (_.isUndefined(string) || string.length === 0) {
+            return '';
+        }
+        return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
+    },
+    generateUUID: function () {
+        // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+        /* jshint ignore:start */
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+        /* jshint ignore:end */
+    },
+    defaultModelResolver: function (name) {
+        return window.cat.models[name];
+    }
+};
 
 /**
  * @name CatApiEndpoint
@@ -3689,19 +3727,16 @@ var CatErrorHttpInterceptor = (function () {
     };
     return CatErrorHttpInterceptor;
 })();
-function catErrorHttpInterceptorFactory($q, loadingService, catValidationMessageHandler) {
-    return new CatErrorHttpInterceptor($q, loadingService, catValidationMessageHandler);
-}
 angular
     .module('cat.service.httpIntercept', [
     'cat.service.loading',
     'cat.service.validation'
 ])
-    .factory('errorHttpInterceptor', [
+    .service('errorHttpInterceptor', [
     '$q',
     'loadingService',
     'catValidationMessageHandler',
-    catErrorHttpInterceptorFactory
+    CatErrorHttpInterceptor
 ])
     .config(['$httpProvider', function ($httpProvider) {
         $httpProvider.interceptors.push('errorHttpInterceptor');
@@ -4093,43 +4128,6 @@ angular
     '$rootScope',
     CatMessageService
 ]);
-
-window.cat = window.cat || {};
-window.cat.models = window.cat.models || {};
-window.cat.util = window.cat.util || {
-    pluralize: function (string) {
-        if (_.isUndefined(string) || string.length === 0) {
-            return '';
-        }
-        var lastChar = string[string.length - 1];
-        switch (lastChar) {
-            case 'y':
-                return string.substring(0, string.length - 1) + 'ies';
-            case 's':
-                return string + 'es';
-            default:
-                return string + 's';
-        }
-    },
-    capitalize: function (string) {
-        if (_.isUndefined(string) || string.length === 0) {
-            return '';
-        }
-        return string.substring(0, 1).toUpperCase() + string.substring(1, string.length);
-    },
-    generateUUID: function () {
-        // http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
-        /* jshint ignore:start */
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-        /* jshint ignore:end */
-    },
-    defaultModelResolver: function (name) {
-        return window.cat.models[name];
-    }
-};
 
 })(window.jQuery, window._, window.angular);
 //# sourceMappingURL=cat-angular.js.map

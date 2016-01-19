@@ -9,4 +9,3 @@ declare class CatErrorHttpInterceptor implements IHttpInterceptor {
     response(success: any): any;
     responseError(rejection: any): IPromise<any>;
 }
-declare function catErrorHttpInterceptorFactory($q: IQService, loadingService: CatLoadingService, catValidationMessageHandler: CatValidationMessageHandler): CatErrorHttpInterceptor;
