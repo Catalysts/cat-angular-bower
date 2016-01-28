@@ -1098,9 +1098,9 @@ angular.module('cat.directives.icon', [])
  * @ngdoc directive
  * @name cat.directives.icon:catIcon
  *
- * @param icon name of the icon
- * @param title title of the icon
- * @param size size of the icon [undefined | '': normal, 'xs': small]
+ * @param {string} icon name of the icon
+ * @param {string} title title of the icon
+ * @param {string} size size of the icon [undefined | '': normal, 'xs': small]
  */
     .directive('catIcon', function CatIcon() {
         return {
@@ -3816,7 +3816,7 @@ angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service
  * @ngdoc service
  * @name cat.service.httpIntercept:errorHttpInterceptor
  */
-    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "catValidationMessageHandler", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, catValidationMessageHandler) {
+    .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "$injector", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, $injector) {
         return {
             'request': function (config) {
                 loadingService.start();
@@ -3832,7 +3832,7 @@ angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service
             },
             'responseError': function (rejection) {
                 loadingService.stop();
-                catValidationMessageHandler.handleRejectedResponse(rejection);
+                $injector.get('catValidationMessageHandler').handleRejectedResponse(rejection);
                 return $q.reject(rejection);
             }
         };

@@ -174,12 +174,12 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-main-menu.tpl.html',
     '<ul class="nav navbar-nav">\n' +
-    '    <li class="dropdown" ng-repeat="menu in getMenus()" dropdown="">\n' +
-    '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)" dropdown-toggle="">\n' +
+    '    <li class="dropdown" ng-repeat="menu in getMenus()" uib-dropdown="">\n' +
+    '        <a href="" class="dropdown-toggle" ng-if="isVisible(menu)" uib-dropdown-toggle="">\n' +
     '            <span cat-i18n="cc.catalysts.cat-menu.menu.{{menu.completeId}}">{{menu.getOptions().name}}</span>\n' +
     '            <b class="caret"></b>\n' +
     '        </a>\n' +
-    '        <ul class="dropdown-menu" ng-if="isVisible(menu)">\n' +
+    '        <ul class="dropdown-menu" uib-dropdown-menu="" ng-if="isVisible(menu)">\n' +
     '            <li ng-repeat="entry in menu.getFlattened() track by entry.id" ng-if="isVisible(entry)"\n' +
     '                ng-class="{\'dropdown-header\': entry.isGroup() && !entry.isSubMenu(), \'dropdown dropdown-submenu\' : entry.isSubMenu()}">\n' +
     '                <a ng-if="!entry.isGroup()" ng-href="#{{entry.getOptions().path}}">\n' +
@@ -193,7 +193,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '                <a ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" href="" class="dropdown-toggle"\n' +
     '                   data-toggle="dropdown">\n' +
     '                    <span cat-i18n="cc.catalysts.cat-menu.group.{{entry.completeId}}">{{entry.getOptions().name}}</span>\n' +
-    '                    <ul ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" class="dropdown-menu">\n' +
+    '                    <ul ng-if="isVisible(entry) && entry.isGroup() && entry.isSubMenu()" class="dropdown-menu" uib-dropdown-menu="">\n' +
     '                        <li ng-repeat="entry in entry.subEntries track by entry.id" ng-if="isVisible(entry)">\n' +
     '                            <a ng-href="#{{entry.getOptions().path}}" ng-if="!entry.isGroup()">\n' +
     '                                <span cat-i18n="cc.catalysts.cat-menu.entry.{{entry.completeId}}">\n' +
@@ -206,7 +206,8 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '            </li>\n' +
     '        </ul>\n' +
     '    </li>\n' +
-    '</ul>');
+    '</ul>\n' +
+    '');
 }]);
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
