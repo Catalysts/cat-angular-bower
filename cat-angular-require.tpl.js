@@ -19,15 +19,15 @@ define(['angular', 'angular-ui-bootstrap'], function(angular) {
     angular.module('cat.template', ['ui.bootstrap.tpls']);
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
   $templateCache.put('template/cat-base-additional-details-tabs-view.tpl.html',
-    '<tabset>\n' +
-    '    <tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
-    '        <tab-heading>\n' +
+    '<uib-tabset vertical="true" type="pills">\n' +
+    '    <uib-tab active="activeTab[tab.name]" select="selectTab(tab.name)" ng-repeat="tab in tabs">\n' +
+    '        <uib-tab-heading>\n' +
     '            <span ng-if="tab.icon" ng-class="\'glyphicon glyphicon-\'+tab.icon"></span> <span\n' +
     '                cat-i18n="{{getTabKey(tab.name)}}">{{getTabName(tab.name)}}</span>\n' +
-    '        </tab-heading>\n' +
+    '        </uib-tab-heading>\n' +
     '        <div ng-include="getTabTemplate(tab.name)" ng-controller="tabController"></div>\n' +
-    '    </tab>\n' +
-    '</tabset>\n' +
+    '    </uib-tab>\n' +
+    '</uib-tabset>\n' +
     '\n' +
     '');
 }]);
@@ -246,14 +246,14 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '        </div>\n' +
     '    </div>\n' +
     '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
-    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '        <uib-pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
     '                    ng-model="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"\n' +
     '                    previous-text="{{paginationText.previous}}"\n' +
     '                    next-text="{{paginationText.next}}"\n' +
     '                    first-text="{{paginationText.first}}"\n' +
     '                    last-text="{{paginationText.last}}">\n' +
-    '        </pagination>\n' +
+    '        </uib-pagination>\n' +
     '    </div>\n' +
     '    <div class="text-center">\n' +
     '        <div class="alert alert-info" style="margin: 20px 0;" ng-if="listData.count !== 0"\n' +
@@ -267,31 +267,35 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '    </div>\n' +
     '    <div ng-transclude></div>\n' +
     '    <div class="text-center" ng-if="!listData.isSinglePageList && listData.count !== 0">\n' +
-    '        <pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
+    '        <uib-pagination total-items="listData.count" items-per-page="listData.pagination.size"\n' +
     '                    ng-model="listData.pagination.page" max-size="10"\n' +
     '                    class="pagination-sm" boundary-links="true" rotate="false"\n' +
     '                    previous-text="{{paginationText.previous}}"\n' +
     '                    next-text="{{paginationText.next}}"\n' +
     '                    first-text="{{paginationText.first}}"\n' +
     '                    last-text="{{paginationText.last}}">\n' +
-    '        </pagination>\n' +
+    '        </uib-pagination>\n' +
     '    </div>\n' +
     '</div>\n' +
     '');
 }]);
 
 angular.module('cat.template').run(['$templateCache', function($templateCache) {
-  $templateCache.put('template/tabs/tabset.html',
-    '<div class="row tabset">\n' +
+  $templateCache.put('uib/template/tabs/tabset.html',
+    '<div class="row">\n' +
     '    <!-- override angular-ui template -->\n' +
     '    <div class="col-sm-2">\n' +
-    '        <ul class="nav nav-stacked nav-pills" ng-transclude></ul>\n' +
+    '        <ul class="nav nav-{{type || \'tabs\'}}" ng-class="{\'nav-stacked\': vertical, \'nav-justified\': justified}" ng-transclude></ul>\n' +
     '    </div>\n' +
     '    <div class="col-sm-10 tab-content">\n' +
-    '        <div class="tab-pane" ng-repeat="tab in tabs" ng-class="{active: tab.active}"\n' +
-    '             tab-content-transclude="tab"></div>\n' +
+    '        <div class="tab-pane"\n' +
+    '             ng-repeat="tab in tabs"\n' +
+    '             ng-class="{active: tab.active}"\n' +
+    '             uib-tab-content-transclude="tab">\n' +
+    '        </div>\n' +
     '    </div>\n' +
-    '</div>');
+    '</div>\n' +
+    '');
 }]);
 
     return 'cat.template';
