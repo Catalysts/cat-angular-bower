@@ -741,6 +741,39 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
+
+angular.module('cat.filters.replaceText', [])
+
+/**
+ * @ngdoc filter
+ * @name cat.filters.replaceText:replaceText
+ *
+ * @description
+ * Replaces text passages with other text, based on regular expressions
+ *
+ * @param {string} text original text
+ * @param {string} pattern regular expression
+ * @param {object} options regular expression options
+ * @param {string} replacement replacement text
+ */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -1610,7 +1643,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
         placeholder: ' ', // space in default placeholder is required, otherwise allowClear property does not work
         minimumInputLength: 0,
         adaptDropdownCssClass: function (cssClass) {
-            if (_.contains(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
+            if (_.includes(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
                 return cssClass;
             }
             return null;
@@ -1866,39 +1899,6 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -3394,7 +3394,7 @@ function ValidationContext(uuid) {
      * @param {string} name name of the field
      */
     this.registerField = function (name) {
-        if (!_.contains(that.knownFields, name)) {
+        if (!_.includes(that.knownFields, name)) {
             that.knownFields.push(name);
         }
     };
@@ -3407,6 +3407,30 @@ function CatValidationService($log,
                               catMessagesConfig,
                               catI18nService) {
     var that = this;
+
+    /**
+     * Adds a field error to the context
+     * @param fieldName name of the faulty field
+     * @param errorMessage associated error message to display
+     * @param context affected context
+     */
+    function appendFieldErrorToContext(fieldName, errorMessage, context) {
+        if (catMessagesConfig.knownFieldsActive === true) {
+            // If the error is for a known field, show the error at the field.
+            // If not, display it as a global error.
+            if (_.contains(context.knownFields, fieldName)) {
+                context.fieldErrors[fieldName] = context.fieldErrors[fieldName] || [];
+                context.fieldErrors[fieldName].push(errorMessage);
+            } else {
+                context.global = [errorMessage];
+                // TODO is this also context dependend? or even necessary?
+                $globalMessages.addMessages('error', context.global, context);
+            }
+        } else {
+            context.fieldErrors[fieldName] = context.fieldErrors[fieldName] || [];
+            context.fieldErrors[fieldName].push(errorMessage);
+        }
+    }
 
     /**
      * Returns the validations context for a specific context identifier.
@@ -3443,6 +3467,18 @@ function CatValidationService($log,
         delete catValidationContexts[contextId];
     };
 
+    /**
+     * Adds a error message for a specific field to the context.
+     * @param fieldName name of the faulty field
+     * @param errorMessage associated error message
+     * @param contextId id of the affected context
+     */
+    this.addFieldError = function (fieldName, errorMessage, contextId) {
+        var context = that.getContext(contextId);
+        context.fieldErrors = context.fieldErrors || {};
+        appendFieldErrorToContext(fieldName, errorMessage, context);
+    };
+
     this.updateFromRejection = function (rejection) {
         var contextId;
         if (!!rejection.config) {
@@ -3450,8 +3486,7 @@ function CatValidationService($log,
         }
 
         var context = that.getContext(contextId);
-
-        var fieldErrors = context.fieldErrors = {};
+        context.fieldErrors = {};
 
         var rejectionData = rejection.data;
         context.global = undefined;
@@ -3471,20 +3506,7 @@ function CatValidationService($log,
             // group by field
             _.forEach(rejection.data.fieldErrors, function (fieldError) {
                 // Allow config to switch between displaying errors at the field and displaying errors at known fields or globally
-                if (catMessagesConfig.knownFieldsActive === true) {
-                    // If the error is for a known field, show the error at the field.
-                    // If not, display it as a global error.
-                    if (_.contains(context.knownFields, fieldError.field)) {
-                        fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                        fieldErrors[fieldError.field].push(fieldError.message);
-                    } else {
-                        rejection.data.globalErrors = rejection.data.globalErrors || [];
-                        rejection.data.globalErrors.push(fieldError.message);
-                    }
-                } else {
-                    fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                    fieldErrors[fieldError.field].push(fieldError.message);
-                }
+                appendFieldErrorToContext(fieldError.field, fieldError.message, context);
             });
         }
 
@@ -3500,6 +3522,16 @@ function CatValidationService($log,
         var context = that.getContext(contextId);
         delete context.global;
         context.fieldErrors = {};
+    };
+
+    /**
+     * Clears existing errors for the field of the specified context
+     * @param fieldName name of the field
+     * @param contextId id of the affected context
+     */
+    this.clearFieldError = function (fieldName, contextId) {
+        var context = that.getContext(contextId);
+        delete context.fieldErrors[fieldName];
     };
 
     this.hasGlobalErrors = function (contextId) {
