@@ -96,7 +96,7 @@ angular.module('cat.template').run(['$templateCache', function($templateCache) {
     '<h2>\n' +
     '    <span cat-i18n="{{catBaseListController.titleKey}}">{{catBaseListController.title}}</span>\n' +
     '    <a class="btn btn-primary pull-right" ui-sref="{{catBaseListController.config.name}}.detail({id: \'new\'})"\n' +
-    '            cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
+    '       cat-element-visible="cat.base.new" cat-element-data="catBaseListController.config">\n' +
     '        <span cat-icon="create"></span> <span cat-i18n="cc.catalysts.general.new">New</span>\n' +
     '    </a>\n' +
     '</h2>\n' +

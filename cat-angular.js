@@ -275,10 +275,10 @@ window.cat.SearchRequest = function (searchUrlParams) {
 
 angular.module('cat.config.messages', [])
 
-/**
- * @description
- * Configuration for cat-messages.
- */
+    /**
+     * @description
+     * Configuration for cat-messages.
+     */
     .constant('catMessagesConfig', {
         knownFieldsActive: false
     });
@@ -741,6 +741,39 @@ angular
     ]).controller('CatBaseTabsController', CatBaseTabsController);
 'use strict';
 
+
+angular.module('cat.filters.replaceText', [])
+
+    /**
+     * @ngdoc filter
+     * @name cat.filters.replaceText:replaceText
+     *
+     * @description
+     * Replaces text passages with other text, based on regular expressions
+     *
+     * @param {string} text original text
+     * @param {string} pattern regular expression
+     * @param {object} options regular expression options
+     * @param {string} replacement replacement text
+     */
+    .filter('replaceText', function CatReplaceTetFilter() {
+        return function (text, pattern, options, replacement) {
+            if (pattern === undefined)
+                pattern = '\n';
+            if (options === undefined)
+                options = 'g';
+            if (replacement === undefined)
+                replacement = ', ';
+            if (!text) {
+                return text;
+            } else {
+                return String(text).replace(new RegExp(pattern, options), replacement);
+            }
+        };
+    });
+
+'use strict';
+
 /**
  * @ngdoc directive
  * @name cat.directives.autofocus:catAutofocus
@@ -767,18 +800,18 @@ angular.module('cat.directives.autofocus', [])
 
 angular.module('cat.directives.breadcrumbs', ['cat.service.breadcrumbs'])
 
-/**
- * @description
- * Configuration for cat-breadcrumbs.
- */
+    /**
+     * @description
+     * Configuration for cat-breadcrumbs.
+     */
     .constant('catBreadcrumbsConfig', {
         homeState: 'dashboard'
     })
 
-/**
- * @ngdoc directive
- * @name cat.directives.breadcrumbs:catBreadcrumbs
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.breadcrumbs:catBreadcrumbs
+     */
     .directive('catBreadcrumbs', ["catBreadcrumbsConfig", "catBreadcrumbs", function CatBreadcrumbsDirective(catBreadcrumbsConfig, catBreadcrumbs) {
         return {
             restrict: 'A',
@@ -1015,11 +1048,11 @@ angular.module('cat.directives.fieldErrors', ['cat.service.validation'])
                     });
                 }
 
-                this.hasErrors = function() {
+                this.hasErrors = function () {
                     return catValidationService.hasFieldErrors(that.name, this.contextId);
                 };
 
-                this.getErrors = function() {
+                this.getErrors = function () {
                     return catValidationService.getFieldErrors(that.name, this.contextId);
                 };
             }],
@@ -1122,10 +1155,10 @@ angular.module('cat.directives.i18n', ['cat.service.i18n'])
 
 angular.module('cat.directives.icon', [])
 
-/**
- * @description
- * Configuration for cat-icon.
- */
+    /**
+     * @description
+     * Configuration for cat-icon.
+     */
     .constant('catIconConfig', {
         icons: {
             config: {
@@ -1138,14 +1171,14 @@ angular.module('cat.directives.icon', [])
         }
     })
 
-/**
- * @ngdoc directive
- * @name cat.directives.icon:catIcon
- *
- * @param icon name of the icon
- * @param title title of the icon
- * @param size size of the icon [undefined | '': normal, 'xs': small]
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.icon:catIcon
+     *
+     * @param icon name of the icon
+     * @param title title of the icon
+     * @param size size of the icon [undefined | '': normal, 'xs': small]
+     */
     .directive('catIcon', function CatIcon() {
         return {
             restrict: 'A',
@@ -1179,10 +1212,10 @@ angular.module('cat.directives.icon', [])
 
 angular.module('cat.directives.inputGroup', [])
 
-/**
- * @ngdoc directive
- * @name cat.directives.inputGroup:catInputGroup
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.inputGroup:catInputGroup
+     */
     .directive('catInputGroup', ["catValidationService", function CatInputGroupDirective(catValidationService) {
         return {
             restrict: 'A',
@@ -1208,10 +1241,10 @@ angular.module('cat.directives.inputGroup', [])
 
 angular.module('cat.directives.input', [])
 
-/**
- * @ngdoc directive
- * @name cat.directives.input:input
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.input:input
+     */
     .directive('input', function CatInputDirective() {
         return {
             require: '?ngModel',
@@ -1315,14 +1348,14 @@ angular.module('cat.directives.menu', ['cat.service.menu', 'cat.service.elementV
 'use strict';
 
 angular.module('cat.directives.messages', [
-    'cat.config.messages',
-    'cat.service.validation'
-])
+        'cat.config.messages',
+        'cat.service.validation'
+    ])
 
-/**
- * @ngdoc directive
- * @name cat.directives.messages:catMessages
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.messages:catMessages
+     */
     .directive('catMessages', function () {
         return {
             restrict: 'A',
@@ -1610,7 +1643,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
         placeholder: ' ', // space in default placeholder is required, otherwise allowClear property does not work
         minimumInputLength: 0,
         adaptDropdownCssClass: function (cssClass) {
-            if (_.contains(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
+            if (_.includes(['ng-valid', 'ng-invalid', 'ng-pristine', 'ng-dirty'], cssClass)) {
                 return cssClass;
             }
             return null;
@@ -1766,14 +1799,14 @@ function CatValidationController($scope, catValidationService) {
 }
 
 angular.module('cat.directives.validation', ['cat.service.validation'])
-/**
- * @ngdoc directive
- * @name cat.directives.validation.inputs:catValidationGroup
- *
- * @description
- * This directive provides a container which defines a new validation context. Via the controller the context can be
- * retrieved.
- */
+    /**
+     * @ngdoc directive
+     * @name cat.directives.validation.inputs:catValidationGroup
+     *
+     * @description
+     * This directive provides a container which defines a new validation context. Via the controller the context can be
+     * retrieved.
+     */
     .directive('catValidationGroup', function CatValidationGroup() {
         return {
             restrict: 'A',
@@ -1866,39 +1899,6 @@ angular.module('cat.directives.numbersOnly', [])
             }
         };
     });
-'use strict';
-
-
-angular.module('cat.filters.replaceText', [])
-
-/**
- * @ngdoc filter
- * @name cat.filters.replaceText:replaceText
- *
- * @description
- * Replaces text passages with other text, based on regular expressions
- *
- * @param {string} text original text
- * @param {string} pattern regular expression
- * @param {object} options regular expression options
- * @param {string} replacement replacement text
- */
-    .filter('replaceText', function CatReplaceTetFilter() {
-        return function (text, pattern, options, replacement) {
-            if (pattern === undefined)
-                pattern = '\n';
-            if (options === undefined)
-                options = 'g';
-            if (replacement === undefined)
-                replacement = ', ';
-            if (!text) {
-                return text;
-            } else {
-                return String(text).replace(new RegExp(pattern, options), replacement);
-            }
-        };
-    });
-
 /**
  * Created by tscheinecker on 23.10.2014.
  */
@@ -2465,10 +2465,10 @@ function CatBreadcrumbsService(catBreadcrumbs, $state) {
 
 angular.module('cat.service.breadcrumbs', [])
 
-/**
- * @ngdoc overview
- * @name cat.service.breadcrumbs:catBreadcrumbs
- */
+    /**
+     * @ngdoc overview
+     * @name cat.service.breadcrumbs:catBreadcrumbs
+     */
     .value('catBreadcrumbs', [])
     .service('catBreadcrumbsService', CatBreadcrumbsService);
 'use strict';
@@ -2547,16 +2547,16 @@ function _convertToClientData(serverData, context) {
 
 
 angular.module('cat.service.conversion', [])
-/**
- * @ngdoc object
- * @name cat.service.conversion:catConversionFunctions
- * @module cat.service.conversion
- *
- * @description
- * Value holding functions used by {@link cat.service.conversion:catConversionService catConversionService}
- *
- * @constructor
- */
+    /**
+     * @ngdoc object
+     * @name cat.service.conversion:catConversionFunctions
+     * @module cat.service.conversion
+     *
+     * @description
+     * Value holding functions used by {@link cat.service.conversion:catConversionService catConversionService}
+     *
+     * @constructor
+     */
     .value('catConversionFunctions', {
         toClient: _convertToClientData,
         toServer: function (clientData, context) {
@@ -2624,14 +2624,14 @@ function CatI18nLocaleService($q, $locale, CAT_I18N_DEFAULT_LOCALE) {
 }
 
 angular.module('cat.service.i18n.locale', [])
-/**
- * @ngdoc overview
- * @name cat.service.i18n:CAT_I18N_DEFAULT_LOCALE
- * @constant
- *
- * @description
- * The default locale used for message translation
- */
+    /**
+     * @ngdoc overview
+     * @name cat.service.i18n:CAT_I18N_DEFAULT_LOCALE
+     * @constant
+     *
+     * @description
+     * The default locale used for message translation
+     */
     .constant('CAT_I18N_DEFAULT_LOCALE', 'de')
     .service('catI18nLocaleService', ['$q', '$locale', 'CAT_I18N_DEFAULT_LOCALE', CatI18nLocaleService]);
 'use strict';
@@ -2825,14 +2825,14 @@ function CatI18nService($q, $log, catI18nMessageSourceService, catI18nMessagePar
 }
 
 angular.module('cat.service.i18n', ['cat.service.i18n.message'])
-/**
- * @ngdoc service
- * @name cat.service.i18n:catI18nMessageParameterResolver
- * @value
- *
- * @description
- * A function which accepts a message and parameters and returns the resolved message
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.i18n:catI18nMessageParameterResolver
+     * @value
+     *
+     * @description
+     * A function which accepts a message and parameters and returns the resolved message
+     */
     .value('catI18nMessageParameterResolver', function (message, parameters) {
         var result = _.template(message, null, {interpolate: /{{([\s\S\d]+?)}}/g})(parameters || {});
 
@@ -3145,15 +3145,15 @@ angular
  * @name cat.service.search
  */
 angular.module('cat.service.search', [])
-/**
- * @ngdoc service
- * @name cat.service.search:catUrlEncodingService
- * @module cat.service.search
- *
- * @description
- * A small helper service which encapsulates the url encoding of an object.
- * In it's default version it just delegates to jQuery.param
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.search:catUrlEncodingService
+     * @module cat.service.search
+     *
+     * @description
+     * A small helper service which encapsulates the url encoding of an object.
+     * In it's default version it just delegates to jQuery.param
+     */
     .service('catUrlEncodingService', function () {
         this.encodeAsUrl = function (params) {
             if (!!params && !_.isEmpty(params)) {
@@ -3409,6 +3409,30 @@ function CatValidationService($log,
     var that = this;
 
     /**
+     * Adds a field error to the context
+     * @param fieldName name of the faulty field
+     * @param errorMessage associated error message to display
+     * @param context affected context
+     */
+    function appendFieldErrorToContext(fieldName, errorMessage, context) {
+        if (catMessagesConfig.knownFieldsActive === true) {
+            // If the error is for a known field, show the error at the field.
+            // If not, display it as a global error.
+            if (_.contains(context.knownFields, fieldName)) {
+                context.fieldErrors[fieldName] = context.fieldErrors[fieldName] || [];
+                context.fieldErrors[fieldName].push(errorMessage);
+            } else {
+                context.global = [errorMessage];
+                // TODO is this also context dependend? or even necessary?
+                $globalMessages.addMessages('error', context.global, context);
+            }
+        } else {
+            context.fieldErrors[fieldName] = context.fieldErrors[fieldName] || [];
+            context.fieldErrors[fieldName].push(errorMessage);
+        }
+    }
+
+    /**
      * Returns the validations context for a specific context identifier.
      * @param {string} contextId context identifier
      * @returns {ValidationContext} validation context
@@ -3443,6 +3467,18 @@ function CatValidationService($log,
         delete catValidationContexts[contextId];
     };
 
+    /**
+     * Adds a error message for a specific field to the context.
+     * @param fieldName name of the faulty field
+     * @param errorMessage associated error message
+     * @param contextId id of the affected context
+     */
+    this.addFieldError = function (fieldName, errorMessage, contextId) {
+        var context = that.getContext(contextId);
+        context.fieldErrors = context.fieldErrors || {};
+        appendFieldErrorToContext(fieldName, errorMessage, context);
+    };
+
     this.updateFromRejection = function (rejection) {
         var contextId;
         if (!!rejection.config) {
@@ -3450,8 +3486,7 @@ function CatValidationService($log,
         }
 
         var context = that.getContext(contextId);
-
-        var fieldErrors = context.fieldErrors = {};
+        context.fieldErrors = {};
 
         var rejectionData = rejection.data;
         context.global = undefined;
@@ -3461,7 +3496,7 @@ function CatValidationService($log,
             $log.warn(rejection);
             catI18nService
                 .translate('cc.catalysts.cat-validation-service.networkError')
-                .then(function(message) {
+                .then(function (message) {
                     context.global = [message];
                 });
             return;
@@ -3471,20 +3506,7 @@ function CatValidationService($log,
             // group by field
             _.forEach(rejection.data.fieldErrors, function (fieldError) {
                 // Allow config to switch between displaying errors at the field and displaying errors at known fields or globally
-                if (catMessagesConfig.knownFieldsActive === true) {
-                    // If the error is for a known field, show the error at the field.
-                    // If not, display it as a global error.
-                    if (_.contains(context.knownFields, fieldError.field)) {
-                        fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                        fieldErrors[fieldError.field].push(fieldError.message);
-                    } else {
-                        rejection.data.globalErrors = rejection.data.globalErrors || [];
-                        rejection.data.globalErrors.push(fieldError.message);
-                    }
-                } else {
-                    fieldErrors[fieldError.field] = fieldErrors[fieldError.field] || [];
-                    fieldErrors[fieldError.field].push(fieldError.message);
-                }
+                appendFieldErrorToContext(fieldError.field, fieldError.message, context);
             });
         }
 
@@ -3500,6 +3522,16 @@ function CatValidationService($log,
         var context = that.getContext(contextId);
         delete context.global;
         context.fieldErrors = {};
+    };
+
+    /**
+     * Clears existing errors for the field of the specified context
+     * @param fieldName name of the field
+     * @param contextId id of the affected context
+     */
+    this.clearFieldError = function (fieldName, contextId) {
+        var context = that.getContext(contextId);
+        delete context.fieldErrors[fieldName];
     };
 
     this.hasGlobalErrors = function (contextId) {
@@ -3856,10 +3888,10 @@ angular.module('cat.service.view',
 
 angular.module('cat.service.httpIntercept', ['cat.service.message', 'cat.service.loading', 'cat.service.validation'])
 
-/**
- * @ngdoc service
- * @name cat.service.httpIntercept:errorHttpInterceptor
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.httpIntercept:errorHttpInterceptor
+     */
     .factory('errorHttpInterceptor', ["$q", "$globalMessages", "loadingService", "catValidationMessageHandler", function CatErrorHttpInterceptor($q, $globalMessages, loadingService, catValidationMessageHandler) {
         return {
             'request': function (config) {
@@ -4262,13 +4294,13 @@ function CatGlobalMessages($rootScope) {
 }
 
 angular.module('cat.service.message', [
-    'cat.config.messages'
-])
+        'cat.config.messages'
+    ])
 
-/**
- * @ngdoc service
- * @name cat.service.message:catValidationMessageHandler
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.message:catValidationMessageHandler
+     */
     .service('catValidationMessageHandler', ["$globalMessages", "catValidationService", function CatValidationMessageHandler($globalMessages, catValidationService) {
         this.handleRejectedResponse = function (rejection) {
             $globalMessages.clearMessages('error');
@@ -4285,10 +4317,10 @@ angular.module('cat.service.message', [
         };
     }])
 
-/**
- * @ngdoc service
- * @name cat.service.message:$globalMessages
- */
+    /**
+     * @ngdoc service
+     * @name cat.service.message:$globalMessages
+     */
     .service('$globalMessages', ['$rootScope', CatGlobalMessages]);
 'use strict';
 
