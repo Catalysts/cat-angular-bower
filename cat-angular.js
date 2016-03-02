@@ -71,7 +71,6 @@ angular.module('cat', [
 'use strict';
 
 /**
- /**
  * @ngdoc function
  * @name cat.FacetTerm
  * @module cat
@@ -114,6 +113,7 @@ window.cat.Facet = function (data) {
         return new window.cat.FacetTerm(facet);
     });
 };
+
 'use strict';
 
 /**
@@ -609,7 +609,9 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
     var endpoint = config.endpoint;
 
     $scope.tabs = _.filter(config.tabs, function (tab) {
-        return catElementVisibilityService.isVisible('cat.base.tab', tab);
+        var visible = catElementVisibilityService.isVisible('cat.base.tab', tab);
+        
+        return visible && (!_.isFunction(tab.isVisible) || tab.isVisible(config));
     });
     $scope.tabNames = _.map($scope.tabs, 'name');
     $scope.activeTab = {};
