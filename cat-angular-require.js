@@ -325,6 +325,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         catBreadcrumbsService.replaceLast({
             title: $scope.title()
         });
+        $scope.$broadcast('cat-detail-updated', $scope.detail);
     };
 
     /**
@@ -564,11 +565,21 @@ CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$loca
 function CatBaseTabsController($scope, $controller, $stateParams, $location, catElementVisibilityService, config, urlResolverService) {
     var endpoint = config.endpoint;
 
-    $scope.tabs = _.filter(config.tabs, function (tab) {
-        var visible = catElementVisibilityService.isVisible('cat.base.tab', tab);
-        
-        return visible && (!_.isFunction(tab.isVisible) || tab.isVisible(config));
+    function initTabs() {
+        $scope.tabs = _.filter(config.tabs, function (tab) {
+            var visible = catElementVisibilityService.isVisible('cat.base.tab', tab);
+
+            return visible && (!_.isFunction(tab.isVisible) || tab.isVisible(config));
+        });
+    }
+
+    initTabs();
+    $scope.$on('cat-detail-updated', function (event, detail) {
+        // #61 update visible tabs if details object changed
+        config.detail = detail;
+        initTabs();
     });
+
     $scope.tabNames = _.map($scope.tabs, 'name');
     $scope.activeTab = {};
 
@@ -4297,6 +4308,10 @@ window.cat.util.pluralize = function (string) {
 
     switch (lastChar) {
         case 'y':
+            // Exception if the word ends with 'ay' e.g. 'gateway'
+            if (string[string.length - 2] === 'a') {
+                return string + 's';
+            }
             return string.substring(0, string.length - 1) + 'ies';
         case 's':
             return string + 'es';
