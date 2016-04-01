@@ -280,7 +280,6 @@ angular.module('cat.config.messages', [])
  * @param {object} catBreadcrumbsService DOCTODO
  * @param {Object} config holds data like the current api endpoint, template urls, base url, the model constructor, etc.
  */
-CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catValidationService", "catBreadcrumbsService", "config"];
 function CatBaseDetailController($scope, $state, $stateParams, $location, $window, $globalMessages, $controller, $log, catValidationService, catBreadcrumbsService, config) {
     $scope.detail = config.detail;
     $scope.editDetail = undefined;
@@ -427,6 +426,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
                 } else {
                     $scope.editDetail = undefined;
                     $scope.detail = data;
+                    config.detail = data;
                     update();
                 }
             }
@@ -459,6 +459,7 @@ function CatBaseDetailController($scope, $state, $stateParams, $location, $windo
         $scope.edit();
     }
 }
+CatBaseDetailController.$inject = ["$scope", "$state", "$stateParams", "$location", "$window", "$globalMessages", "$controller", "$log", "catValidationService", "catBreadcrumbsService", "config"];
 
 angular.module('cat.controller.base.detail', ['cat.service.breadcrumbs', 'cat.controller.base.tabs'])
     .controller('CatBaseDetailController', CatBaseDetailController);
@@ -561,7 +562,6 @@ angular.module('cat.controller.base.list', ['cat.service.breadcrumbs'])
  * @param {Object} catElementVisibilityService The visibility service to check wheter or not a tab should be rendered
  * @param {Object} config The config as handled by state resolve
  */
-CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config", "urlResolverService"];
 function CatBaseTabsController($scope, $controller, $stateParams, $location, catElementVisibilityService, config, urlResolverService) {
     var endpoint = config.endpoint;
 
@@ -702,6 +702,7 @@ function CatBaseTabsController($scope, $controller, $stateParams, $location, cat
         }
     }];
 }
+CatBaseTabsController.$inject = ["$scope", "$controller", "$stateParams", "$location", "catElementVisibilityService", "config", "urlResolverService"];
 
 angular
     .module('cat.controller.base.tabs', [
@@ -1501,7 +1502,6 @@ angular.module('cat.directives.paginated',
 
 'use strict';
 
-CatSelectController.$inject = ["$scope", "$log", "catApiService", "catSelectConfigService"];
 function CatSelectLink(scope, element, attrs, ngModel) {
     element.addClass('form-control');
     // clear formatters, otherwise $viewModel will be converted to a string
@@ -1604,6 +1604,7 @@ function CatSelectController($scope, $log, catApiService, catSelectConfigService
         }
     }, options['ui-select2']);
 }
+CatSelectController.$inject = ["$scope", "$log", "catApiService", "catSelectConfigService"];
 
 /**
  * @ngdoc directive
@@ -2333,7 +2334,6 @@ angular.module('cat.service.api').provider('$api', CatApiServiceProvider);
  *
  * @constructor
  */
-CatBreadcrumbsService.$inject = ["catBreadcrumbs", "$state"];
 function CatBreadcrumbsService(catBreadcrumbs, $state) {
     var that = this;
 
@@ -2431,6 +2431,7 @@ function CatBreadcrumbsService(catBreadcrumbs, $state) {
         return uiStack;
     };
 }
+CatBreadcrumbsService.$inject = ["catBreadcrumbs", "$state"];
 
 angular.module('cat.service.breadcrumbs', [])
 
@@ -2452,7 +2453,6 @@ angular.module('cat.service.breadcrumbs', [])
  *
  * @constructor
  */
-CatConversionService.$inject = ["catConversionFunctions"];
 function CatConversionService(catConversionFunctions) {
     this.toClient = function (serverData, context) {
         return catConversionFunctions.toClient(serverData, context);
@@ -2462,6 +2462,7 @@ function CatConversionService(catConversionFunctions) {
         return catConversionFunctions.toServer(clientData);
     };
 }
+CatConversionService.$inject = ["catConversionFunctions"];
 
 function _convertToClientModel(data, context) {
     if (!_.isUndefined(context) && _.isFunction(context.model)) {
@@ -2900,7 +2901,6 @@ angular
  * This service provider delegates to the $stateProvider and actually creates 2 separate routes after applying various
  * conventions / defaults
  */
-CatRouteServiceProvider.$inject = ["$stateProvider"];
 function CatRouteServiceProvider($stateProvider) {
     var viewNames = [];
 
@@ -3082,6 +3082,7 @@ function CatRouteServiceProvider($stateProvider) {
         return viewNames;
     };
 }
+CatRouteServiceProvider.$inject = ["$stateProvider"];
 
 angular
     .module('cat.service.route', [
@@ -3592,7 +3593,6 @@ angular.module('cat.service.validation', [
 
 'use strict';
 
-CatViewConfigService.$inject = ["$q", "catApiService", "catListDataLoadingService"];
 function CatViewConfigService($q, catApiService, catListDataLoadingService) {
     function toLowerCaseName(name) {
         if (!name) {
@@ -3773,6 +3773,7 @@ function CatViewConfigService($q, catApiService, catListDataLoadingService) {
         return deferredConfig.promise;
     };
 }
+CatViewConfigService.$inject = ["$q", "catApiService", "catListDataLoadingService"];
 
 angular
     .module('cat.service.view.config', [
@@ -3796,7 +3797,6 @@ angular
  * @param {CatApiServiceProvider} catApiServiceProvider DOCTODO
  * @constructor
  */
-CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
 function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) {
     var viewNames = [];
     var endpointNames = [];
@@ -3846,6 +3846,7 @@ function CatViewServiceProvider(catRouteServiceProvider, catApiServiceProvider) 
         };
     };
 }
+CatViewServiceProvider.$inject = ["catRouteServiceProvider", "catApiServiceProvider"];
 
 angular.module('cat.service.view',
     [
